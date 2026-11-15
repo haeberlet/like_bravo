@@ -10,29 +10,29 @@
       <li>
         <label class="font-checkbox">
           <span class="icon-dot-circled"></span>
-          <input type="radio" name="mode" value="inherit"{if $CLUB_LIKES_SELECTED == 'inherit'} checked="checked"{/if}>
+          <input type="radio" name="mode" value="inherit"{if $LIKE_BRAVO_SELECTED == 'inherit'} checked="checked"{/if}>
           {'Inherited'|translate}
         </label>
-        <span class="club-likes-hint">
-          &ndash; {'currently'|translate}: <strong>{$CLUB_LIKES_INHERITED_LABEL}</strong>
-          {if $CLUB_LIKES_INHERITED_FROM}
-            ({'from album'|translate} <a href="{$CLUB_LIKES_INHERITED_FROM.URL}">{$CLUB_LIKES_INHERITED_FROM.NAME}</a>)
+        <span class="like-bravo-hint">
+          &ndash; {'currently'|translate}: <strong>{$LIKE_BRAVO_INHERITED_LABEL}</strong>
+          {if $LIKE_BRAVO_INHERITED_FROM}
+            ({'from album'|translate} <a href="{$LIKE_BRAVO_INHERITED_FROM.URL}">{$LIKE_BRAVO_INHERITED_FROM.NAME}</a>)
           {else}
             ({'no parent album has a setting'|translate})
           {/if}
         </span>
       </li>
-{foreach from=$CLUB_LIKES_MODES item=label key=mode}
+{foreach from=$LIKE_BRAVO_MODES item=label key=mode}
       <li>
         <label class="font-checkbox">
           <span class="icon-dot-circled"></span>
-          <input type="radio" name="mode" value="{$mode}"{if $CLUB_LIKES_SELECTED == "$mode"} checked="checked"{/if}>
+          <input type="radio" name="mode" value="{$mode}"{if $LIKE_BRAVO_SELECTED == "$mode"} checked="checked"{/if}>
           {$label}
         </label>
       </li>
 {/foreach}
     </ul>
-    <p class="club-likes-hint">{'The setting applies to this album and all its sub-albums, until a sub-album has its own setting.'|translate}</p>
+    <p class="like-bravo-hint">{'The setting applies to this album and all its sub-albums, until a sub-album has its own setting.'|translate}</p>
   </fieldset>
 
 </div>

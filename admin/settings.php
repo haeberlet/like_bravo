@@ -1,7 +1,7 @@
 <?php
-defined('CLUB_LIKES_PATH') or die('Hacking attempt!');
+defined('LIKE_BRAVO_PATH') or die('Hacking attempt!');
 
-include_once(CLUB_LIKES_PATH . 'include/icons.inc.php');
+include_once(LIKE_BRAVO_PATH . 'include/icons.inc.php');
 
 // +-----------------------------------------------------------------------+
 // | Save                                                                  |
@@ -20,16 +20,16 @@ if (isset($_POST['submit']))
   $posted['score_constant'] = str_replace(',', '.', trim($posted['score_constant']));
   $posted['allow_own_photos'] = isset($_POST['allow_own_photos']);
 
-  if (!club_likes_is_valid_score_constant($posted['score_constant']))
+  if (!like_bravo_is_valid_score_constant($posted['score_constant']))
   {
     $page['errors'][] = l10n('The score constant must be a number greater than 0.');
-    $posted['score_constant'] = $conf['club_likes']['score_constant'];
+    $posted['score_constant'] = $conf['like_bravo']['score_constant'];
   }
 
-  $old_constant = $conf['club_likes']['score_constant'];
-  conf_update_param('club_likes', club_likes_normalize_conf($posted), true);
+  $old_constant = $conf['like_bravo']['score_constant'];
+  conf_update_param('like_bravo', like_bravo_normalize_conf($posted), true);
 
-  if ($conf['club_likes']['score_constant'] != $old_constant)
+  if ($conf['like_bravo']['score_constant'] != $old_constant)
   {
     include_once(PHPWG_ROOT_PATH.'include/functions_rate.inc.php');
     update_rating_score();
@@ -46,26 +46,26 @@ if (isset($_POST['submit']))
 // +-----------------------------------------------------------------------+
 
 $vote_icons = array();
-foreach (club_likes_vote_icon_names() as $name)
+foreach (like_bravo_vote_icon_names() as $name)
 {
-  $vote_icons[$name] = club_likes_icon($name, 24);
+  $vote_icons[$name] = like_bravo_icon($name, 24);
 }
 
 $undo_icons = array();
-foreach (club_likes_undo_icon_names() as $name)
+foreach (like_bravo_undo_icon_names() as $name)
 {
-  $undo_icons[$name] = club_likes_icon($name, 24);
+  $undo_icons[$name] = like_bravo_icon($name, 24);
 }
 
 $template->assign(array(
-  'club_likes' => $conf['club_likes'],
-  'CLUB_LIKES_VOTE_ICONS' => $vote_icons,
-  'CLUB_LIKES_UNDO_ICONS' => $undo_icons,
-  'CLUB_LIKES_CSS' => 'plugins/' . CLUB_LIKES_ID . '/css/admin.css',
-  'F_ACTION' => CLUB_LIKES_ADMIN,
+  'like_bravo' => $conf['like_bravo'],
+  'LIKE_BRAVO_VOTE_ICONS' => $vote_icons,
+  'LIKE_BRAVO_UNDO_ICONS' => $undo_icons,
+  'LIKE_BRAVO_CSS' => 'plugins/' . LIKE_BRAVO_ID . '/css/admin.css',
+  'F_ACTION' => LIKE_BRAVO_ADMIN,
   'PWG_TOKEN' => get_pwg_token(),
-  'ADMIN_PAGE_TITLE' => 'Club Likes',
+  'ADMIN_PAGE_TITLE' => 'Like &amp; Bravo',
   ));
 
-$template->set_filename('club_likes_content', realpath(CLUB_LIKES_PATH . 'admin/template/settings.tpl'));
-$template->assign_var_from_handle('ADMIN_CONTENT', 'club_likes_content');
+$template->set_filename('like_bravo_content', realpath(LIKE_BRAVO_PATH . 'admin/template/settings.tpl'));
+$template->assign_var_from_handle('ADMIN_CONTENT', 'like_bravo_content');

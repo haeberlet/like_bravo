@@ -7,7 +7,7 @@ defined('PHPWG_ROOT_PATH') or die('Hacking attempt!');
  *
  * @return array icon name => inner SVG markup
  */
-function club_likes_icon_shapes()
+function like_bravo_icon_shapes()
 {
   return array(
     'thumb' =>
@@ -45,9 +45,9 @@ function club_likes_icon_shapes()
  * @param int $size width and height in pixels
  * @return string complete <svg> element, empty string for an unknown icon
  */
-function club_likes_icon($name, $size=20)
+function like_bravo_icon($name, $size=20)
 {
-  $shapes = club_likes_icon_shapes();
+  $shapes = like_bravo_icon_shapes();
 
   if (!isset($shapes[$name]))
   {
@@ -56,7 +56,7 @@ function club_likes_icon($name, $size=20)
 
   $size = (int)$size;
 
-  return '<svg class="club-likes-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"'
+  return '<svg class="like-bravo-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"'
     .' width="'.$size.'" height="'.$size.'" fill="none" stroke="currentColor" stroke-width="2"'
     .' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'
     .$shapes[$name]

@@ -1,19 +1,19 @@
-/* Club Likes: sets, changes and removes the vote of the connected member. */
+/* Like & Bravo: sets, changes and removes the vote of the connected member. */
 (function() {
   'use strict';
 
   function init() {
-    var widget = document.getElementById('clubLikes');
+    var widget = document.getElementById('likeBravo');
     if (!widget || widget.getAttribute('data-ready')) {
       return;
     }
     widget.setAttribute('data-ready', '1');
 
-    var buttons = widget.querySelectorAll('.club-likes-button');
-    var message = widget.querySelector('.club-likes-message');
+    var buttons = widget.querySelectorAll('.like-bravo-button');
+    var message = widget.querySelector('.like-bravo-message');
     var saving = false;
 
-    // singular only for exactly one, as club_likes_count_text() in PHP
+    // singular only for exactly one, as like_bravo_count_text() in PHP
     function text(count, one, many) {
       var pattern = widget.getAttribute('data-str-' + (count === 1 ? one : many));
       return pattern.replace('%d', count);
@@ -35,11 +35,11 @@
         }
       }
 
-      var likes = widget.querySelector('.club-likes-count-likes');
+      var likes = widget.querySelector('.like-bravo-count-likes');
       if (likes) {
         likes.textContent = text(state.likes, 'like', 'likes');
       }
-      var bravos = widget.querySelector('.club-likes-count-bravos');
+      var bravos = widget.querySelector('.like-bravo-count-bravos');
       if (bravos) {
         bravos.textContent = text(state.bravos, 'bravo', 'bravos');
       }
@@ -83,7 +83,7 @@
     }
 
     widget.addEventListener('click', function(event) {
-      var button = event.target.closest ? event.target.closest('.club-likes-button') : null;
+      var button = event.target.closest ? event.target.closest('.like-bravo-button') : null;
       if (!button || !widget.contains(button)) {
         return;
       }

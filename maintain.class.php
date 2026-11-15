@@ -3,7 +3,7 @@ defined('PHPWG_ROOT_PATH') or die('Hacking attempt!');
 
 include_once(dirname(__FILE__) . '/include/functions_logic.inc.php');
 
-class club_likes_maintain extends PluginMaintain
+class like_bravo_maintain extends PluginMaintain
 {
   private $table;
 
@@ -12,7 +12,7 @@ class club_likes_maintain extends PluginMaintain
     parent::__construct($plugin_id);
 
     global $prefixeTable;
-    $this->table = $prefixeTable . 'club_likes_modes';
+    $this->table = $prefixeTable . 'like_bravo_modes';
   }
 
   /**
@@ -34,8 +34,8 @@ CREATE TABLE IF NOT EXISTS `'.$this->table.'` (
 ;';
     pwg_query($query);
 
-    $stored = isset($conf['club_likes']) ? safe_unserialize($conf['club_likes']) : array();
-    conf_update_param('club_likes', club_likes_normalize_conf($stored), true);
+    $stored = isset($conf['like_bravo']) ? safe_unserialize($conf['like_bravo']) : array();
+    conf_update_param('like_bravo', like_bravo_normalize_conf($stored), true);
   }
 
   function update($old_version, $new_version, &$errors=array())
@@ -52,17 +52,17 @@ CREATE TABLE IF NOT EXISTS `'.$this->table.'` (
     global $conf;
 
     // the plugin is not loaded yet while it is being activated
-    if (!defined('CLUB_LIKES_MODES_TABLE'))
+    if (!defined('LIKE_BRAVO_MODES_TABLE'))
     {
-      define('CLUB_LIKES_MODES_TABLE', $this->table);
+      define('LIKE_BRAVO_MODES_TABLE', $this->table);
     }
     include_once(dirname(__FILE__) . '/include/functions_db.inc.php');
     include_once(dirname(__FILE__) . '/include/score.inc.php');
 
-    $stored = isset($conf['club_likes']) ? $conf['club_likes'] : array();
-    $conf['club_likes'] = club_likes_normalize_conf(is_array($stored) ? $stored : safe_unserialize($stored));
+    $stored = isset($conf['like_bravo']) ? $conf['like_bravo'] : array();
+    $conf['like_bravo'] = like_bravo_normalize_conf(is_array($stored) ? $stored : safe_unserialize($stored));
 
-    club_likes_recompute_scores();
+    like_bravo_recompute_scores();
   }
 
   /**
@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS `'.$this->table.'` (
    */
   function deactivate()
   {
-    remove_event_handler('update_rating_score', 'club_likes_update_rating_score');
+    remove_event_handler('update_rating_score', 'like_bravo_update_rating_score');
 
     include_once(PHPWG_ROOT_PATH.'include/functions_rate.inc.php');
     update_rating_score();
@@ -84,6 +84,6 @@ CREATE TABLE IF NOT EXISTS `'.$this->table.'` (
   function uninstall()
   {
     pwg_query('DROP TABLE IF EXISTS `'.$this->table.'`;');
-    conf_delete_param('club_likes');
+    conf_delete_param('like_bravo');
   }
 }

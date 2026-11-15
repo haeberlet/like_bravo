@@ -1,16 +1,16 @@
 <?php
-defined('CLUB_LIKES_PATH') or die('Hacking attempt!');
+defined('LIKE_BRAVO_PATH') or die('Hacking attempt!');
 
-// admin.php?page=plugin-club_likes        -> settings
-// admin.php?page=plugin-club_likes-album  -> "Member rating" tab of an album
+// admin.php?page=plugin-like_bravo        -> settings
+// admin.php?page=plugin-like_bravo-album  -> "Member rating" tab of an album
 
 check_status(ACCESS_ADMINISTRATOR);
 
 if (isset($_GET['tab']) and 'album' == $_GET['tab'])
 {
-  include(CLUB_LIKES_PATH . 'admin/album.php');
+  include(LIKE_BRAVO_PATH . 'admin/album.php');
 }
 else
 {
-  include(CLUB_LIKES_PATH . 'admin/settings.php');
+  include(LIKE_BRAVO_PATH . 'admin/settings.php');
 }

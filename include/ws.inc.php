@@ -1,20 +1,20 @@
 <?php
 defined('PHPWG_ROOT_PATH') or die('Hacking attempt!');
 
-include_once(CLUB_LIKES_PATH . 'include/score.inc.php');
+include_once(LIKE_BRAVO_PATH . 'include/score.inc.php');
 
 /**
  * Event handler: registers the web service methods of the plugin.
  *
  * @param array $arr the service, by reference in the first element
  */
-function club_likes_ws_add_methods($arr)
+function like_bravo_ws_add_methods($arr)
 {
   $service = &$arr[0];
 
   $service->addMethod(
-    'clubLikes.setVote',
-    'club_likes_ws_set_vote',
+    'likeBravo.setVote',
+    'like_bravo_ws_set_vote',
     array(
       'image_id' => array('type' => WS_TYPE_ID),
       'level' => array('info' => 'none, like, bravo'),
@@ -34,7 +34,7 @@ function club_likes_ws_add_methods($arr)
  *    @option string level 'none', 'like' or 'bravo'
  *    @option string pwg_token
  */
-function club_likes_ws_set_vote($params, &$service)
+function like_bravo_ws_set_vote($params, &$service)
 {
   global $conf, $user;
 
@@ -72,28 +72,28 @@ SELECT DISTINCT id, added_by
     return new PwgError(404, 'Invalid image_id or access denied');
   }
 
-  $mode = club_likes_get_image_mode($image_id);
+  $mode = like_bravo_get_image_mode($image_id);
 
-  if (!in_array($params['level'], club_likes_allowed_levels($mode), true))
+  if (!in_array($params['level'], like_bravo_allowed_levels($mode), true))
   {
     return new PwgError(403, 'This level is not available for this photo');
   }
 
-  if (!$conf['club_likes']['allow_own_photos']
+  if (!$conf['like_bravo']['allow_own_photos']
       and 'none' !== $params['level']
       and $images[0]['added_by'] == $user['id'])
   {
     return new PwgError(403, 'You cannot rate your own photos');
   }
 
-  club_likes_set_user_level($image_id, $user['id'], $params['level']);
+  like_bravo_set_user_level($image_id, $user['id'], $params['level']);
 
-  $votes = club_likes_get_image_votes($image_id, $mode);
+  $votes = like_bravo_get_image_votes($image_id, $mode);
 
   return array(
     'likes' => $votes['likes'],
     'bravos' => $votes['bravos'],
-    'level' => club_likes_get_user_level($image_id, $user['id'], $mode),
+    'level' => like_bravo_get_user_level($image_id, $user['id'], $mode),
     );
 }
 
@@ -106,12 +106,12 @@ SELECT DISTINCT id, added_by
  * @param array $params
  * @return mixed
  */
-function club_likes_ws_invoke_allowed($result, $method_name, $params)
+function like_bravo_ws_invoke_allowed($result, $method_name, $params)
 {
   if ('pwg.images.rate' == $method_name
       and isset($params['image_id'])
       and is_numeric($params['image_id'])
-      and CLUB_LIKES_MODE_INACTIVE != club_likes_get_image_mode($params['image_id']))
+      and LIKE_BRAVO_MODE_INACTIVE != like_bravo_get_image_mode($params['image_id']))
   {
     return new PwgError(403, 'Star rating is disabled for this photo');
   }

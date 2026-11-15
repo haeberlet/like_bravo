@@ -2,29 +2,29 @@
 defined('PHPWG_ROOT_PATH') or die('Hacking attempt!');
 
 /**
- * Pure business rules of Club Likes: no database access, no globals.
+ * Pure business rules of Like & Bravo: no database access, no globals.
  * Everything in this file is covered by tests/run.php.
  */
 
 // Album modes. The numeric order is the conflict rule: the highest mode wins.
 // "Inherited" is not a stored value, it is the absence of an explicit mode.
-define('CLUB_LIKES_MODE_INACTIVE', 0);
-define('CLUB_LIKES_MODE_LIKE', 1);
-define('CLUB_LIKES_MODE_LIKE_BRAVO', 2);
+define('LIKE_BRAVO_MODE_INACTIVE', 0);
+define('LIKE_BRAVO_MODE_LIKE', 1);
+define('LIKE_BRAVO_MODE_BOTH', 2);
 
 // Values written to the native rate table.
-define('CLUB_LIKES_RATE_LIKE', 3);
-define('CLUB_LIKES_RATE_BRAVO', 5);
+define('LIKE_BRAVO_RATE_LIKE', 3);
+define('LIKE_BRAVO_RATE_BRAVO', 5);
 
 /**
  * @return int[] all modes that can be stored for an album
  */
-function club_likes_valid_modes()
+function like_bravo_valid_modes()
 {
   return array(
-    CLUB_LIKES_MODE_INACTIVE,
-    CLUB_LIKES_MODE_LIKE,
-    CLUB_LIKES_MODE_LIKE_BRAVO,
+    LIKE_BRAVO_MODE_INACTIVE,
+    LIKE_BRAVO_MODE_LIKE,
+    LIKE_BRAVO_MODE_BOTH,
     );
 }
 
@@ -32,7 +32,7 @@ function club_likes_valid_modes()
  * @return string[] names of the icons selectable for like and bravo;
  *    the drawings live in include/icons.inc.php
  */
-function club_likes_vote_icon_names()
+function like_bravo_vote_icon_names()
 {
   return array('thumb', 'heart', 'smile', 'star', 'sparkle', 'trophy', 'medal');
 }
@@ -41,7 +41,7 @@ function club_likes_vote_icon_names()
  * @return string[] names of the icons selectable for "remove my vote";
  *    'none' means no separate icon (click the active icon again)
  */
-function club_likes_undo_icon_names()
+function like_bravo_undo_icon_names()
 {
   return array('none', 'ban', 'cross');
 }
@@ -49,7 +49,7 @@ function club_likes_undo_icon_names()
 /**
  * @return array default plugin configuration
  */
-function club_likes_default_conf()
+function like_bravo_default_conf()
 {
   return array(
     'icon_like' => 'thumb',
@@ -70,9 +70,9 @@ function club_likes_default_conf()
  * @param mixed $stored value read from the config table or built from a form
  * @return array
  */
-function club_likes_normalize_conf($stored)
+function like_bravo_normalize_conf($stored)
 {
-  $defaults = club_likes_default_conf();
+  $defaults = like_bravo_default_conf();
 
   if (!is_array($stored))
   {
@@ -83,12 +83,12 @@ function club_likes_normalize_conf($stored)
 
   foreach (array('icon_like', 'icon_bravo') as $key)
   {
-    if (!in_array($conf[$key], club_likes_vote_icon_names(), true))
+    if (!in_array($conf[$key], like_bravo_vote_icon_names(), true))
     {
       $conf[$key] = $defaults[$key];
     }
   }
-  if (!in_array($conf['icon_undo'], club_likes_undo_icon_names(), true))
+  if (!in_array($conf['icon_undo'], like_bravo_undo_icon_names(), true))
   {
     $conf['icon_undo'] = $defaults['icon_undo'];
   }
@@ -99,7 +99,7 @@ function club_likes_normalize_conf($stored)
     $conf[$key] = function_exists('mb_substr') ? mb_substr($label, 0, 40) : substr($label, 0, 40);
   }
 
-  if (!club_likes_is_valid_score_constant($conf['score_constant']))
+  if (!like_bravo_is_valid_score_constant($conf['score_constant']))
   {
     $conf['score_constant'] = $defaults['score_constant'];
   }
@@ -113,7 +113,7 @@ function club_likes_normalize_conf($stored)
  * @param mixed $value
  * @return bool true for a number greater than 0 and at most 1000
  */
-function club_likes_is_valid_score_constant($value)
+function like_bravo_is_valid_score_constant($value)
 {
   return is_numeric($value) and $value > 0 and $value <= 1000;
 }
@@ -128,7 +128,7 @@ function club_likes_is_valid_score_constant($value)
  * @return array 'mode' => int, 'source' => int|null id of the album the mode
  *    comes from (the album itself when set explicitly, null when none)
  */
-function club_likes_resolve_mode($uppercats, $explicit_modes)
+function like_bravo_resolve_mode($uppercats, $explicit_modes)
 {
   $ids = array_filter(explode(',', (string)$uppercats), 'strlen');
 
@@ -141,7 +141,7 @@ function club_likes_resolve_mode($uppercats, $explicit_modes)
     }
   }
 
-  return array('mode' => CLUB_LIKES_MODE_INACTIVE, 'source' => null);
+  return array('mode' => LIKE_BRAVO_MODE_INACTIVE, 'source' => null);
 }
 
 /**
@@ -151,9 +151,9 @@ function club_likes_resolve_mode($uppercats, $explicit_modes)
  * @param int[] $modes
  * @return int
  */
-function club_likes_combine_modes($modes)
+function like_bravo_combine_modes($modes)
 {
-  return empty($modes) ? CLUB_LIKES_MODE_INACTIVE : (int)max($modes);
+  return empty($modes) ? LIKE_BRAVO_MODE_INACTIVE : (int)max($modes);
 }
 
 /**
@@ -166,16 +166,16 @@ function club_likes_combine_modes($modes)
  * @param int $mode
  * @return string|null 'like', 'bravo' or null if the rate does not count
  */
-function club_likes_classify_rate($rate, $mode)
+function like_bravo_classify_rate($rate, $mode)
 {
   $rate = (int)$rate;
 
-  if ($mode == CLUB_LIKES_MODE_INACTIVE or $rate < CLUB_LIKES_RATE_LIKE)
+  if ($mode == LIKE_BRAVO_MODE_INACTIVE or $rate < LIKE_BRAVO_RATE_LIKE)
   {
     return null;
   }
 
-  if ($mode == CLUB_LIKES_MODE_LIKE_BRAVO and $rate > CLUB_LIKES_RATE_LIKE)
+  if ($mode == LIKE_BRAVO_MODE_BOTH and $rate > LIKE_BRAVO_RATE_LIKE)
   {
     return 'bravo';
   }
@@ -188,13 +188,13 @@ function club_likes_classify_rate($rate, $mode)
  * @param int $mode
  * @return array 'likes' => int, 'bravos' => int, 'dormant' => int
  */
-function club_likes_count_votes($rates, $mode)
+function like_bravo_count_votes($rates, $mode)
 {
   $counts = array('likes' => 0, 'bravos' => 0, 'dormant' => 0);
 
   foreach ($rates as $rate)
   {
-    $level = club_likes_classify_rate($rate, $mode);
+    $level = like_bravo_classify_rate($rate, $mode);
     if ('like' == $level)
     {
       $counts['likes']++;
@@ -221,7 +221,7 @@ function club_likes_count_votes($rates, $mode)
  * @param float $k score constant (points needed to reach half of the maximum)
  * @return float|null null without any counting vote (photo is "not rated")
  */
-function club_likes_score($likes, $bravos, $k)
+function like_bravo_score($likes, $bravos, $k)
 {
   $points = $likes + 2 * $bravos;
 
@@ -237,13 +237,13 @@ function club_likes_score($likes, $bravos, $k)
  * @param int $mode
  * @return string[] vote levels a member may set in this mode
  */
-function club_likes_allowed_levels($mode)
+function like_bravo_allowed_levels($mode)
 {
   switch ($mode)
   {
-    case CLUB_LIKES_MODE_LIKE:
+    case LIKE_BRAVO_MODE_LIKE:
       return array('none', 'like');
-    case CLUB_LIKES_MODE_LIKE_BRAVO:
+    case LIKE_BRAVO_MODE_BOTH:
       return array('none', 'like', 'bravo');
     default:
       return array();
@@ -254,14 +254,14 @@ function club_likes_allowed_levels($mode)
  * @param string $level 'like' or 'bravo'
  * @return int|null value for the rate table, null for any other level
  */
-function club_likes_level_to_rate($level)
+function like_bravo_level_to_rate($level)
 {
   switch ($level)
   {
     case 'like':
-      return CLUB_LIKES_RATE_LIKE;
+      return LIKE_BRAVO_RATE_LIKE;
     case 'bravo':
-      return CLUB_LIKES_RATE_BRAVO;
+      return LIKE_BRAVO_RATE_BRAVO;
     default:
       return null;
   }
@@ -276,7 +276,7 @@ function club_likes_level_to_rate($level)
  * m and C are taken from star photos only, so likes and bravos elsewhere in
  * the gallery never move the score of a star photo.
  *
- * Photos in a thumbs mode get club_likes_score(). Rates of guests do not
+ * Photos in a thumbs mode get like_bravo_score(). Rates of guests do not
  * count there: likes and bravos are bound to a member account.
  *
  * @param array $rate_rows rows of 'element_id', 'rate', 'is_guest' and 'n'
@@ -287,7 +287,7 @@ function club_likes_level_to_rate($level)
  * @return array image_id => 'score' (float|null), 'average' (float|null),
  *    'count' (int); thumbs photos also have 'likes' and 'bravos'
  */
-function club_likes_compute_scores($rate_rows, $image_modes, $k)
+function like_bravo_compute_scores($rate_rows, $image_modes, $k)
 {
   $stars = array();
   $thumbs = array();
@@ -296,9 +296,9 @@ function club_likes_compute_scores($rate_rows, $image_modes, $k)
   {
     $id = (int)$row['element_id'];
     $n = (int)$row['n'];
-    $mode = isset($image_modes[$id]) ? (int)$image_modes[$id] : CLUB_LIKES_MODE_INACTIVE;
+    $mode = isset($image_modes[$id]) ? (int)$image_modes[$id] : LIKE_BRAVO_MODE_INACTIVE;
 
-    if (CLUB_LIKES_MODE_INACTIVE == $mode)
+    if (LIKE_BRAVO_MODE_INACTIVE == $mode)
     {
       if (!isset($stars[$id]))
       {
@@ -315,7 +315,7 @@ function club_likes_compute_scores($rate_rows, $image_modes, $k)
     }
     if (empty($row['is_guest']))
     {
-      $level = club_likes_classify_rate($row['rate'], $mode);
+      $level = like_bravo_classify_rate($row['rate'], $mode);
       if ('like' == $level)
       {
         $thumbs[$id]['likes'] += $n;
@@ -349,7 +349,7 @@ function club_likes_compute_scores($rate_rows, $image_modes, $k)
   foreach ($thumbs as $id => $item)
   {
     $results[$id] = array(
-      'score' => club_likes_score($item['likes'], $item['bravos'], $k),
+      'score' => like_bravo_score($item['likes'], $item['bravos'], $k),
       'average' => null,
       'count' => $item['likes'] + $item['bravos'],
       'likes' => $item['likes'],

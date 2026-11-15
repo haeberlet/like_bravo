@@ -1,6 +1,6 @@
 <?php
 /*
-Plugin Name: Club Likes
+Plugin Name: Like & Bravo
 Version: 0.1.0
 Description: Replaces the star rating by "Like" / "Bravo" in selected albums, built on the native rating system.
 Plugin URI:
@@ -12,49 +12,49 @@ defined('PHPWG_ROOT_PATH') or die('Hacking attempt!');
 
 global $prefixeTable;
 
-define('CLUB_LIKES_ID', basename(dirname(__FILE__)));
-define('CLUB_LIKES_PATH', PHPWG_PLUGINS_PATH . CLUB_LIKES_ID . '/');
-define('CLUB_LIKES_MODES_TABLE', $prefixeTable . 'club_likes_modes');
-define('CLUB_LIKES_ADMIN', get_root_url() . 'admin.php?page=plugin-' . CLUB_LIKES_ID);
+define('LIKE_BRAVO_ID', basename(dirname(__FILE__)));
+define('LIKE_BRAVO_PATH', PHPWG_PLUGINS_PATH . LIKE_BRAVO_ID . '/');
+define('LIKE_BRAVO_MODES_TABLE', $prefixeTable . 'like_bravo_modes');
+define('LIKE_BRAVO_ADMIN', get_root_url() . 'admin.php?page=plugin-' . LIKE_BRAVO_ID);
 
-include_once(CLUB_LIKES_PATH . 'include/functions_logic.inc.php');
-include_once(CLUB_LIKES_PATH . 'include/functions_db.inc.php');
+include_once(LIKE_BRAVO_PATH . 'include/functions_logic.inc.php');
+include_once(LIKE_BRAVO_PATH . 'include/functions_db.inc.php');
 
-add_event_handler('init', 'club_likes_init');
-add_event_handler('delete_categories', 'club_likes_delete_categories');
+add_event_handler('init', 'like_bravo_init');
+add_event_handler('delete_categories', 'like_bravo_delete_categories');
 
 // scores: the plugin replaces the core computation
-add_event_handler('update_rating_score', 'club_likes_update_rating_score',
-  EVENT_HANDLER_PRIORITY_NEUTRAL, CLUB_LIKES_PATH . 'include/score.inc.php');
+add_event_handler('update_rating_score', 'like_bravo_update_rating_score',
+  EVENT_HANDLER_PRIORITY_NEUTRAL, LIKE_BRAVO_PATH . 'include/score.inc.php');
 
 // web service: own vote method, native rating refused on thumbs photos
-add_event_handler('ws_add_methods', 'club_likes_ws_add_methods',
-  EVENT_HANDLER_PRIORITY_NEUTRAL, CLUB_LIKES_PATH . 'include/ws.inc.php');
-add_event_handler('ws_invoke_allowed', 'club_likes_ws_invoke_allowed',
-  EVENT_HANDLER_PRIORITY_NEUTRAL + 10, CLUB_LIKES_PATH . 'include/ws.inc.php');
+add_event_handler('ws_add_methods', 'like_bravo_ws_add_methods',
+  EVENT_HANDLER_PRIORITY_NEUTRAL, LIKE_BRAVO_PATH . 'include/ws.inc.php');
+add_event_handler('ws_invoke_allowed', 'like_bravo_ws_invoke_allowed',
+  EVENT_HANDLER_PRIORITY_NEUTRAL + 10, LIKE_BRAVO_PATH . 'include/ws.inc.php');
 
 // picture page: no native star rating on thumbs photos, own widget instead
-add_event_handler('loc_begin_picture', 'club_likes_block_native_rate',
-  EVENT_HANDLER_PRIORITY_NEUTRAL, CLUB_LIKES_PATH . 'include/picture.inc.php');
-add_event_handler('loc_end_picture', 'club_likes_picture',
-  EVENT_HANDLER_PRIORITY_NEUTRAL, CLUB_LIKES_PATH . 'include/picture.inc.php');
+add_event_handler('loc_begin_picture', 'like_bravo_block_native_rate',
+  EVENT_HANDLER_PRIORITY_NEUTRAL, LIKE_BRAVO_PATH . 'include/picture.inc.php');
+add_event_handler('loc_end_picture', 'like_bravo_picture',
+  EVENT_HANDLER_PRIORITY_NEUTRAL, LIKE_BRAVO_PATH . 'include/picture.inc.php');
 
 if (defined('IN_ADMIN'))
 {
-  add_event_handler('tabsheet_before_select', 'club_likes_tabsheet_before_select');
+  add_event_handler('tabsheet_before_select', 'like_bravo_tabsheet_before_select');
 }
 
 /**
  * Loads the plugin configuration and language files.
  */
-function club_likes_init()
+function like_bravo_init()
 {
   global $conf;
 
-  $stored = isset($conf['club_likes']) ? safe_unserialize($conf['club_likes']) : array();
-  $conf['club_likes'] = club_likes_normalize_conf($stored);
+  $stored = isset($conf['like_bravo']) ? safe_unserialize($conf['like_bravo']) : array();
+  $conf['like_bravo'] = like_bravo_normalize_conf($stored);
 
-  load_language('plugin.lang', CLUB_LIKES_PATH);
+  load_language('plugin.lang', LIKE_BRAVO_PATH);
 }
 
 /**
@@ -64,7 +64,7 @@ function club_likes_init()
  * @param string $id id of the tabsheet being built
  * @return array
  */
-function club_likes_tabsheet_before_select($sheets, $id)
+function like_bravo_tabsheet_before_select($sheets, $id)
 {
   if ('album' == $id and isset($_GET['cat_id']))
   {
@@ -83,9 +83,9 @@ function club_likes_tabsheet_before_select($sheets, $id)
       $style_added = true;
     }
 
-    $sheets['club_likes'] = array(
+    $sheets['like_bravo'] = array(
       'caption' => '<span class="icon-thumbs-up"></span>'.l10n('Member rating'),
-      'url' => CLUB_LIKES_ADMIN.'-album&amp;cat_id='.(int)$_GET['cat_id'],
+      'url' => LIKE_BRAVO_ADMIN.'-album&amp;cat_id='.(int)$_GET['cat_id'],
       );
   }
 

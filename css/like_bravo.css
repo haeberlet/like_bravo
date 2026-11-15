@@ -1,9 +1,9 @@
 /* Like / bravo widget on the picture page. Colors come from the theme
    (currentColor), only the active state has a color of its own. */
 
-.club-likes {
-  --club-likes-like: #2e8fd8;
-  --club-likes-bravo: #e8a200;
+.like-bravo {
+  --like-bravo-like: #2e8fd8;
+  --like-bravo-bravo: #e8a200;
 
   display: flex;
   flex-wrap: wrap;
@@ -16,23 +16,23 @@
 }
 
 /* inside the photo information block the widget follows its alignment */
-.club-likes.club-likes-in-info {
+.like-bravo.like-bravo-in-info {
   justify-content: flex-start;
   margin: 8px 0 0;
   padding: 0;
 }
 
-.club-likes-title {
+.like-bravo-title {
   font-weight: bold;
 }
 
-.club-likes-buttons {
+.like-bravo-buttons {
   display: inline-flex;
   align-items: center;
   gap: 2px;
 }
 
-.club-likes .club-likes-button {
+.like-bravo .like-bravo-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -51,56 +51,56 @@
   transition: opacity 0.15s, color 0.15s, background-color 0.15s;
 }
 
-.club-likes .club-likes-button[hidden] {
+.like-bravo .like-bravo-button[hidden] {
   display: none;
 }
 
-.club-likes .club-likes-button:hover,
-.club-likes .club-likes-button:focus-visible {
+.like-bravo .like-bravo-button:hover,
+.like-bravo .like-bravo-button:focus-visible {
   opacity: 1;
   background-color: rgba(128, 128, 128, 0.18);
 }
 
-.club-likes .club-likes-button:focus-visible {
+.like-bravo .like-bravo-button:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 1px;
 }
 
-.club-likes .club-likes-button.is-active {
+.like-bravo .like-bravo-button.is-active {
   opacity: 1;
 }
 
-.club-likes .club-likes-like.is-active {
-  color: var(--club-likes-like);
+.like-bravo .like-bravo-like.is-active {
+  color: var(--like-bravo-like);
 }
 
-.club-likes .club-likes-bravo.is-active {
-  color: var(--club-likes-bravo);
+.like-bravo .like-bravo-bravo.is-active {
+  color: var(--like-bravo-bravo);
 }
 
-.club-likes .is-active .club-likes-icon {
+.like-bravo .is-active .like-bravo-icon {
   fill: currentColor;
   fill-opacity: 0.3;
 }
 
-.club-likes.is-saving .club-likes-button {
+.like-bravo.is-saving .like-bravo-button {
   cursor: progress;
 }
 
-.club-likes-icon {
+.like-bravo-icon {
   display: block;
   pointer-events: none;
 }
 
-.club-likes-counts {
+.like-bravo-counts {
   white-space: nowrap;
 }
 
-.club-likes-message:empty {
+.like-bravo-message:empty {
   display: none;
 }
 
-.club-likes-message {
+.like-bravo-message {
   flex-basis: 100%;
   font-size: 0.9em;
 }

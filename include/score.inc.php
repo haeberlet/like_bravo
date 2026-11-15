@@ -9,9 +9,9 @@ defined('PHPWG_ROOT_PATH') or die('Hacking attempt!');
 /**
  * @return array image_id => mode for all photos in a thumbs mode
  */
-function club_likes_get_all_image_modes()
+function like_bravo_get_all_image_modes()
 {
-  $explicit_modes = club_likes_get_explicit_modes();
+  $explicit_modes = like_bravo_get_explicit_modes();
 
   if (empty($explicit_modes))
   {
@@ -25,8 +25,8 @@ SELECT id, uppercats
   $cat_modes = array();
   foreach (query2array($query, 'id', 'uppercats') as $cat_id => $uppercats)
   {
-    $resolved = club_likes_resolve_mode($uppercats, $explicit_modes);
-    if (CLUB_LIKES_MODE_INACTIVE != $resolved['mode'])
+    $resolved = like_bravo_resolve_mode($uppercats, $explicit_modes);
+    if (LIKE_BRAVO_MODE_INACTIVE != $resolved['mode'])
     {
       $cat_modes[(int)$cat_id] = $resolved['mode'];
     }
@@ -48,16 +48,16 @@ SELECT image_id, category_id
     $modes_of[(int)$row['image_id']][] = $cat_modes[(int)$row['category_id']];
   }
 
-  return array_map('club_likes_combine_modes', $modes_of);
+  return array_map('like_bravo_combine_modes', $modes_of);
 }
 
 /**
  * Recomputes images.rating_score for the whole gallery and writes the
  * scores that changed.
  *
- * @return array as club_likes_compute_scores()
+ * @return array as like_bravo_compute_scores()
  */
-function club_likes_recompute_scores()
+function like_bravo_recompute_scores()
 {
   global $conf;
 
@@ -66,10 +66,10 @@ SELECT element_id, rate, (user_id = '.(int)$conf['guest_id'].') AS is_guest, COU
   FROM '.RATE_TABLE.'
   GROUP BY element_id, rate, is_guest
 ;';
-  $results = club_likes_compute_scores(
+  $results = like_bravo_compute_scores(
     query2array($query),
-    club_likes_get_all_image_modes(),
-    $conf['club_likes']['score_constant']
+    like_bravo_get_all_image_modes(),
+    $conf['like_bravo']['score_constant']
     );
 
   $query = '
@@ -121,9 +121,9 @@ UPDATE '.IMAGES_TABLE.'
  * @param int|false $element_id
  * @return array score, average and count of $element_id
  */
-function club_likes_update_rating_score($alt_result, $element_id=false)
+function like_bravo_update_rating_score($alt_result, $element_id=false)
 {
-  $results = club_likes_recompute_scores();
+  $results = like_bravo_recompute_scores();
 
   if (false !== $element_id and isset($results[(int)$element_id]))
   {
@@ -140,7 +140,7 @@ function club_likes_update_rating_score($alt_result, $element_id=false)
  * @param int $mode mode of the photo
  * @return array 'likes' => int, 'bravos' => int, 'dormant' => int
  */
-function club_likes_get_image_votes($image_id, $mode)
+function like_bravo_get_image_votes($image_id, $mode)
 {
   global $conf;
 
@@ -151,7 +151,7 @@ SELECT rate
     AND user_id != '.(int)$conf['guest_id'].'
 ;';
 
-  return club_likes_count_votes(query2array($query, null, 'rate'), $mode);
+  return like_bravo_count_votes(query2array($query, null, 'rate'), $mode);
 }
 
 /**
@@ -162,7 +162,7 @@ SELECT rate
  * @param int $mode mode of the photo
  * @return string 'none', 'like' or 'bravo'
  */
-function club_likes_get_user_level($image_id, $user_id, $mode)
+function like_bravo_get_user_level($image_id, $user_id, $mode)
 {
   $query = '
 SELECT rate
@@ -172,7 +172,7 @@ SELECT rate
 ;';
   $rates = query2array($query, null, 'rate');
 
-  $level = empty($rates) ? null : club_likes_classify_rate($rates[0], $mode);
+  $level = empty($rates) ? null : like_bravo_classify_rate($rates[0], $mode);
 
   return null === $level ? 'none' : $level;
 }
@@ -185,7 +185,7 @@ SELECT rate
  * @param int $user_id
  * @param string $level 'none', 'like' or 'bravo'
  */
-function club_likes_set_user_level($image_id, $user_id, $level)
+function like_bravo_set_user_level($image_id, $user_id, $level)
 {
   $image_id = (int)$image_id;
   $user_id = (int)$user_id;
@@ -197,7 +197,7 @@ DELETE FROM '.RATE_TABLE.'
 ;';
   pwg_query($query);
 
-  $rate = club_likes_level_to_rate($level);
+  $rate = like_bravo_level_to_rate($level);
   if (null !== $rate)
   {
     // same anonymous_id as the core writes for a member: IP without last part
