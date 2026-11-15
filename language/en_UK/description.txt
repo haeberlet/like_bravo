@@ -1,0 +1,1 @@
+Replaces the star rating by "Like" / "Bravo" in selected albums, built on the native rating system.

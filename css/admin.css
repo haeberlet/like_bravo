@@ -1,0 +1,40 @@
+.club-likes-icon-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 6px 0 4px;
+}
+
+.club-likes-icon-choice label {
+  cursor: pointer;
+}
+
+.club-likes-icon-choice input {
+  position: absolute;
+  opacity: 0;
+}
+
+.club-likes-icon-choice span {
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 8px 10px;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  opacity: 0.6;
+}
+
+.club-likes-icon-choice input:checked + span {
+  border-color: #ffa646;
+  opacity: 1;
+}
+
+.club-likes-icon-choice input:focus-visible + span {
+  outline: 2px solid #ffa646;
+  outline-offset: 2px;
+}
+
+.club-likes-hint {
+  font-weight: normal;
+  opacity: 0.8;
+}

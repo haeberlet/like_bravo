@@ -1,0 +1,1 @@
+Ersetzt in ausgewählten Alben die Sterne-Bewertung durch „Gefällt mir“ / „Bravo“, aufbauend auf dem nativen Bewertungssystem.

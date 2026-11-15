@@ -1,0 +1,106 @@
+/* Like / bravo widget on the picture page. Colors come from the theme
+   (currentColor), only the active state has a color of its own. */
+
+.club-likes {
+  --club-likes-like: #2e8fd8;
+  --club-likes-bravo: #e8a200;
+
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 12px;
+  margin: 12px auto;
+  padding: 4px 8px;
+  line-height: 1.4;
+}
+
+/* inside the photo information block the widget follows its alignment */
+.club-likes.club-likes-in-info {
+  justify-content: flex-start;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.club-likes-title {
+  font-weight: bold;
+}
+
+.club-likes-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.club-likes .club-likes-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  opacity: 0.65;
+  cursor: pointer;
+  transition: opacity 0.15s, color 0.15s, background-color 0.15s;
+}
+
+.club-likes .club-likes-button[hidden] {
+  display: none;
+}
+
+.club-likes .club-likes-button:hover,
+.club-likes .club-likes-button:focus-visible {
+  opacity: 1;
+  background-color: rgba(128, 128, 128, 0.18);
+}
+
+.club-likes .club-likes-button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+
+.club-likes .club-likes-button.is-active {
+  opacity: 1;
+}
+
+.club-likes .club-likes-like.is-active {
+  color: var(--club-likes-like);
+}
+
+.club-likes .club-likes-bravo.is-active {
+  color: var(--club-likes-bravo);
+}
+
+.club-likes .is-active .club-likes-icon {
+  fill: currentColor;
+  fill-opacity: 0.3;
+}
+
+.club-likes.is-saving .club-likes-button {
+  cursor: progress;
+}
+
+.club-likes-icon {
+  display: block;
+  pointer-events: none;
+}
+
+.club-likes-counts {
+  white-space: nowrap;
+}
+
+.club-likes-message:empty {
+  display: none;
+}
+
+.club-likes-message {
+  flex-basis: 100%;
+  font-size: 0.9em;
+}
