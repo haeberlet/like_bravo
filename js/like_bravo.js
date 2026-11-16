@@ -1,4 +1,5 @@
-/* Like & Bravo: sets, changes and removes the vote of the current visitor. */
+/* Like & Bravo: sets, changes and removes the vote of the current visitor
+   and shows the names of the voters. */
 (function() {
   'use strict';
 
@@ -10,13 +11,52 @@
     widget.setAttribute('data-ready', '1');
 
     var buttons = widget.querySelectorAll('.like-bravo-button');
+    var counters = widget.querySelectorAll('.like-bravo-count');
     var message = widget.querySelector('.like-bravo-message');
+    var panel = widget.querySelector('.like-bravo-voters');
     var saving = false;
+    var request = 0; // number of the latest request for names
 
     // singular only for exactly one, as like_bravo_count_text() in PHP
     function text(count, one, many) {
       var pattern = widget.getAttribute('data-str-' + (count === 1 ? one : many));
       return pattern.replace('%d', count);
+    }
+
+    function post(url, fields) {
+      var body = new URLSearchParams();
+      for (var name in fields) {
+        body.append(name, fields[name]);
+      }
+
+      return fetch(url, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: body.toString()
+      })
+        .then(function(response) {
+          return response.json();
+        })
+        .then(function(data) {
+          if (data.stat !== 'ok') {
+            throw new Error(data.message || 'error');
+          }
+          return data.result;
+        });
+    }
+
+    // one counter: its text and, where names are shown, its short form
+    function renderCounter(selector, count, one, many, summary) {
+      var counter = widget.querySelector(selector);
+      if (!counter) {
+        return;
+      }
+      counter.textContent = text(count, one, many);
+      if (counter.hasAttribute('data-summary')) {
+        counter.setAttribute('data-summary', summary || '');
+        counter.disabled = count === 0;
+      }
     }
 
     // shows the state the server answered with
@@ -35,13 +75,17 @@
         }
       }
 
-      var likes = widget.querySelector('.like-bravo-count-likes');
-      if (likes) {
-        likes.textContent = text(state.likes, 'like', 'likes');
-      }
-      var bravos = widget.querySelector('.like-bravo-count-bravos');
-      if (bravos) {
-        bravos.textContent = text(state.bravos, 'bravo', 'bravos');
+      var summaries = state.summaries || {};
+      renderCounter('.like-bravo-count-likes', state.likes, 'like', 'likes', summaries.like);
+      renderCounter('.like-bravo-count-bravos', state.bravos, 'bravo', 'bravos', summaries.bravo);
+
+      if (panel && !panel.hidden) {
+        if (state.likes + state.bravos > 0) {
+          loadNames();
+        }
+        else {
+          closeNames();
+        }
       }
     }
 
@@ -53,26 +97,12 @@
       widget.classList.add('is-saving');
       message.textContent = '';
 
-      var body = new URLSearchParams();
-      body.append('image_id', widget.getAttribute('data-image-id'));
-      body.append('level', level);
-      body.append('pwg_token', widget.getAttribute('data-token'));
-
-      fetch(widget.getAttribute('data-url'), {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: body.toString()
+      post(widget.getAttribute('data-url'), {
+        image_id: widget.getAttribute('data-image-id'),
+        level: level,
+        pwg_token: widget.getAttribute('data-token')
       })
-        .then(function(response) {
-          return response.json();
-        })
-        .then(function(data) {
-          if (data.stat !== 'ok') {
-            throw new Error(data.message || 'error');
-          }
-          render(data.result);
-        })
+        .then(render)
         .catch(function() {
           message.textContent = widget.getAttribute('data-str-error');
         })
@@ -82,8 +112,80 @@
         });
     }
 
+    // complete lists of names, one line per level
+    function renderNames(lists) {
+      panel.textContent = '';
+
+      for (var i = 0; i < lists.length; i++) {
+        var line = document.createElement('p');
+        line.className = 'like-bravo-voters-' + lists[i].level;
+
+        var title = document.createElement('strong');
+        title.textContent = lists[i].title;
+        line.appendChild(title);
+
+        line.appendChild(document.createTextNode(' ' + lists[i].names.concat(lists[i].extra).join(', ')));
+        panel.appendChild(line);
+      }
+    }
+
+    function setExpanded(expanded) {
+      for (var i = 0; i < counters.length; i++) {
+        counters[i].setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      }
+    }
+
+    function loadNames() {
+      var current = ++request;
+      message.textContent = '';
+
+      post(widget.getAttribute('data-voters-url'), {
+        image_id: widget.getAttribute('data-image-id')
+      })
+        .then(function(result) {
+          if (current !== request) {
+            return; // closed or asked again in the meantime
+          }
+          renderNames(result.lists);
+          panel.hidden = false;
+          setExpanded(true);
+        })
+        .catch(function() {
+          if (current === request) {
+            closeNames();
+            message.textContent = widget.getAttribute('data-str-names-error');
+          }
+        });
+    }
+
+    function closeNames() {
+      request++;
+      if (panel) {
+        panel.hidden = true;
+        panel.textContent = '';
+      }
+      setExpanded(false);
+    }
+
     widget.addEventListener('click', function(event) {
-      var button = event.target.closest ? event.target.closest('.like-bravo-button') : null;
+      var target = event.target.closest ? event.target : null;
+      if (!target) {
+        return;
+      }
+
+      var counter = target.closest('.like-bravo-count');
+      if (counter && panel && widget.contains(counter)) {
+        event.preventDefault();
+        if (panel.hidden) {
+          loadNames();
+        }
+        else {
+          closeNames();
+        }
+        return;
+      }
+
+      var button = target.closest('.like-bravo-button');
       if (!button || !widget.contains(button)) {
         return;
       }
@@ -96,6 +198,19 @@
       }
       send(level);
     });
+
+    if (panel) {
+      document.addEventListener('click', function(event) {
+        if (!panel.hidden && !widget.contains(event.target)) {
+          closeNames();
+        }
+      });
+      document.addEventListener('keydown', function(event) {
+        if (!panel.hidden && (event.key === 'Escape' || event.key === 'Esc')) {
+          closeNames();
+        }
+      });
+    }
   }
 
   if (document.readyState === 'loading') {

@@ -1,7 +1,7 @@
 <?php
 defined('PHPWG_ROOT_PATH') or die('Hacking attempt!');
 
-include_once(LIKE_BRAVO_PATH . 'include/score.inc.php');
+include_once(LIKE_BRAVO_PATH . 'include/voters.inc.php');
 
 /**
  * Event handler: registers the web service methods of the plugin.
@@ -24,6 +24,43 @@ function like_bravo_ws_add_methods($arr)
     null,
     array('post_only' => true)
     );
+
+  $service->addMethod(
+    'likeBravo.getVoters',
+    'like_bravo_ws_get_voters',
+    array(
+      'image_id' => array('type' => WS_TYPE_ID),
+      ),
+    'Returns the names of the members who voted for a photo, if the plugin settings let the current visitor see them.'
+    );
+}
+
+/**
+ * Photo the current visitor may see, with the same access check as
+ * pwg.images.rate.
+ *
+ * @param int $image_id
+ * @return array|null 'id' and 'added_by', null if unknown or not accessible
+ */
+function like_bravo_ws_get_image($image_id)
+{
+  $query = '
+SELECT DISTINCT id, added_by
+  FROM '.IMAGES_TABLE.'
+    INNER JOIN '.IMAGE_CATEGORY_TABLE.' ON id = image_id
+  WHERE id = '.(int)$image_id
+    .get_sql_condition_FandF(
+      array(
+        'forbidden_categories' => 'category_id',
+        'forbidden_images' => 'id',
+        ),
+      '    AND'
+      ).'
+  LIMIT 1
+;';
+  $images = query2array($query);
+
+  return empty($images) ? null : $images[0];
 }
 
 /**
@@ -54,24 +91,9 @@ function like_bravo_ws_set_vote($params, &$service)
 
   $image_id = (int)$params['image_id'];
 
-  // same access check as pwg.images.rate
-  $query = '
-SELECT DISTINCT id, added_by
-  FROM '.IMAGES_TABLE.'
-    INNER JOIN '.IMAGE_CATEGORY_TABLE.' ON id = image_id
-  WHERE id = '.$image_id
-    .get_sql_condition_FandF(
-      array(
-        'forbidden_categories' => 'category_id',
-        'forbidden_images' => 'id',
-        ),
-      '    AND'
-      ).'
-  LIMIT 1
-;';
-  $images = query2array($query);
+  $image = like_bravo_ws_get_image($image_id);
 
-  if (empty($images))
+  if (null === $image)
   {
     return new PwgError(404, 'Invalid image_id or access denied');
   }
@@ -86,7 +108,7 @@ SELECT DISTINCT id, added_by
   // an anonymous account is shared, none of its photos is "own"
   if (!$anonymous and !$conf['like_bravo']['allow_own_photos']
       and 'none' !== $params['level']
-      and $images[0]['added_by'] == $user['id'])
+      and $image['added_by'] == $user['id'])
   {
     return new PwgError(403, 'You cannot rate your own photos');
   }
@@ -105,13 +127,53 @@ SELECT DISTINCT id, added_by
 
   $votes = like_bravo_get_image_votes($image_id, $mode);
 
-  return array(
+  $result = array(
     'likes' => $votes['likes'],
     'bravos' => $votes['bravos'],
     'level' => like_bravo_get_user_level(
       $image_id, $user['id'], $mode,
       $anonymous ? like_bravo_current_anonymous_id() : null
       ),
+    );
+
+  if (like_bravo_names_visible())
+  {
+    $result['summaries'] = like_bravo_summary_texts(like_bravo_get_voters($image_id, $mode));
+  }
+
+  return $result;
+}
+
+/**
+ * API method
+ * Returns the names of the voters of a photo. Read only, so no token; who
+ * may see names is a plugin setting.
+ * @param mixed[] $params
+ *    @option int image_id
+ */
+function like_bravo_ws_get_voters($params, &$service)
+{
+  if (!like_bravo_names_visible())
+  {
+    return new PwgError(401, 'Access denied');
+  }
+
+  $image_id = (int)$params['image_id'];
+
+  if (null === like_bravo_ws_get_image($image_id))
+  {
+    return new PwgError(404, 'Invalid image_id or access denied');
+  }
+
+  $mode = like_bravo_get_image_mode($image_id);
+
+  if (LIKE_BRAVO_MODE_INACTIVE == $mode)
+  {
+    return new PwgError(403, 'Names are not available for this photo');
+  }
+
+  return array(
+    'lists' => like_bravo_voter_lists(like_bravo_get_voters($image_id, $mode)),
     );
 }
 

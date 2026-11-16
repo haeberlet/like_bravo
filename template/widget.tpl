@@ -1,5 +1,5 @@
 {combine_css path=$like_bravo_widget.CSS_PATH}
-{if $like_bravo_widget.BUTTONS}
+{if $like_bravo_widget.BUTTONS or $like_bravo_widget.SHOW_NAMES}
 {combine_script id='like_bravo' load='footer' path=$like_bravo_widget.JS_PATH}
 {/if}
 
@@ -12,7 +12,9 @@
   data-str-likes="{'%d likes'|translate|escape:'html'}"
   data-str-bravo="{'%d bravo'|translate|escape:'html'}"
   data-str-bravos="{'%d bravos'|translate|escape:'html'}"
-  data-str-error="{'Your vote could not be saved.'|translate|escape:'html'}">
+  data-str-error="{'Your vote could not be saved.'|translate|escape:'html'}"
+  data-str-names-error="{'The names could not be loaded.'|translate|escape:'html'}"
+  data-voters-url="{$like_bravo_widget.VOTERS_URL|escape:'html'}">
 
   <span class="like-bravo-title">{$like_bravo_widget.TITLE|escape:'html'}</span>
 
@@ -31,12 +33,26 @@
 {/if}
 
   <span class="like-bravo-counts">
+{if $like_bravo_widget.SHOW_NAMES}
+    <button type="button" data-role="none" class="like-bravo-count like-bravo-count-likes" aria-expanded="false" aria-controls="likeBravoVoters"
+      data-summary="{$like_bravo_widget.LIKES_SUMMARY|escape:'html'}"{if $like_bravo_widget.LIKES_COUNT == 0} disabled{/if}>{$like_bravo_widget.LIKES_TEXT}</button>
+{else}
     <span class="like-bravo-count-likes">{$like_bravo_widget.LIKES_TEXT}</span>
+{/if}
 {if $like_bravo_widget.SHOW_BRAVOS}
     <span class="like-bravo-separator" aria-hidden="true">&middot;</span>
+{if $like_bravo_widget.SHOW_NAMES}
+    <button type="button" data-role="none" class="like-bravo-count like-bravo-count-bravos" aria-expanded="false" aria-controls="likeBravoVoters"
+      data-summary="{$like_bravo_widget.BRAVOS_SUMMARY|escape:'html'}"{if $like_bravo_widget.BRAVOS_COUNT == 0} disabled{/if}>{$like_bravo_widget.BRAVOS_TEXT}</button>
+{else}
     <span class="like-bravo-count-bravos">{$like_bravo_widget.BRAVOS_TEXT}</span>
 {/if}
+{/if}
   </span>
+
+{if $like_bravo_widget.SHOW_NAMES}
+  <div id="likeBravoVoters" class="like-bravo-voters" hidden></div>
+{/if}
 
   <span class="like-bravo-message" role="status" aria-live="polite"></span>
 </div>

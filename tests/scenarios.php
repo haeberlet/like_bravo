@@ -247,6 +247,67 @@ $s = scores();
 ok('and it counts for the star score', 4.0, $s[$c]);
 $user = $webmaster; $conf['rate_anonymous'] = $rate_anonymous_before;
 
+echo "== 10. names of voters\n";
+pwg_query('DELETE FROM '.RATE_TABLE);
+$conf['like_bravo'] = like_bravo_default_conf();
+$conf['rate_anonymous'] = true;
+$member = array();
+foreach (array('anna', 'ben', 'carl', 'dora') as $name) $member[$name] = (int)register_user('lb_test_'.$name, 'lb'.uniqid(), '', false, $errors);
+$me = $webmaster['id']; $my_name = $webmaster['username'];
+foreach (array(array($member['anna'], 2, '2026-11-01'), array($member['ben'], 3, '2026-11-10'), array($member['dora'], 2, '2026-11-12'),
+    array($member['carl'], 4, '2026-11-05'), array($me, 5, '2026-11-02'), array($member['anna'], 5, '2026-11-12', $c)) as $v)
+  single_insert(RATE_TABLE, array('user_id'=>$v[0], 'anonymous_id'=>'10.0.0', 'element_id'=>isset($v[3]) ? $v[3] : $a, 'rate'=>$v[1], 'date'=>$v[2]));
+single_insert(RATE_TABLE, array('user_id'=>$guest, 'anonymous_id'=>'203.0.113', 'element_id'=>$a, 'rate'=>2, 'date'=>'2026-11-12'));
+update_rating_score();
+
+$user = $webmaster; $_SERVER['REMOTE_ADDR'] = '192.168.7.33';
+$groups = like_bravo_get_voters($a, 2);
+ok('likes: newest first', array('lb_test_dora', 'lb_test_ben', 'lb_test_anna'), array_column($groups['like']['voters'], 'name'));
+ok('bravos: own vote first', array($my_name, 'lb_test_carl'), array_column($groups['bravo']['voters'], 'name'));
+ok('guest vote is not listed while guests do not take part', 0, $groups['like']['guests']);
+ok('default: member gets the complete lists, bravos first',
+  array(array('level'=>'bravo', 'title'=>l10n('Bravo'), 'names'=>array($my_name, 'lb_test_carl'), 'extra'=>array()),
+        array('level'=>'like', 'title'=>l10n('Like'), 'names'=>array('lb_test_dora', 'lb_test_ben', 'lb_test_anna'), 'extra'=>array())),
+  ws_voters($a)['lists']);
+$and = l10n('%s and %s');
+ok('short form with three names',
+  sprintf(l10n('Liked by %s'), sprintf($and, 'lb_test_dora, lb_test_ben', 'lb_test_anna')), like_bravo_summary_text('like', $groups['like']));
+ok('short form names the visitor as "you"',
+  sprintf(l10n('Bravo from %s'), sprintf($and, l10n('you (voter)'), 'lb_test_carl')), like_bravo_summary_text('bravo', $groups['bravo']));
+$conf['like_bravo']['names_limit'] = 2;
+ok('short form with two names and the rest as a number',
+  sprintf(l10n('Liked by %s'), sprintf($and, 'lb_test_dora, lb_test_ben', sprintf(l10n('%d other voter'), 1))), like_bravo_summary_text('like', $groups['like']));
+$conf['like_bravo']['names_limit'] = 3;
+$r = ws_vote($a, 'like');
+ok('a vote answers with the new short forms',
+  array(array('likes'=>4, 'bravos'=>1, 'level'=>'like'), true, sprintf(l10n('Bravo from %s'), 'lb_test_carl')),
+  array(array_intersect_key($r, array('likes'=>1, 'bravos'=>1, 'level'=>1)), 0 === strpos($r['summaries']['like'], sprintf(l10n('Liked by %s'), l10n('you (voter)'))), $r['summaries']['bravo']));
+ok('star photo has no names', 'error 403', ws_voters($c));
+ok('unknown photo', 'error 404', ws_voters(999999));
+
+$conf['like_bravo']['allow_guests'] = true;
+ok('guests take part: the guest vote is a number in the list',
+  array(sprintf(l10n('+ %d guest'), 1)), ws_voters($a)['lists'][1]['extra']);
+ok('and in the short form', true,
+  false !== strpos(like_bravo_summary_text('like', like_bravo_get_voters($a, 2)['like']), sprintf(l10n('%d guest voter'), 1)));
+
+visitor($guest, '203.0.113.7');
+ok('names for members: guest gets no names', 'error 401', ws_voters($a));
+ok('names for members: guest vote answers without short forms', false, isset(ws_vote($a, 'like')['summaries']));
+visitor($generic, '203.0.113.7');
+ok('names for members: "generic" account gets no names', 'error 401', ws_voters($a));
+$conf['like_bravo']['show_names'] = 'all';
+visitor($guest, '203.0.113.7');
+ok('names for all: guest gets the names, newest first (the vote just cast)',
+  array(array('lb_test_carl'), array($my_name, 'lb_test_dora', 'lb_test_ben', 'lb_test_anna')),
+  array_column(ws_voters($a)['lists'], 'names'));
+$conf['like_bravo']['show_names'] = 'off';
+ok('names off: guest gets no names', 'error 401', ws_voters($a));
+$user = $webmaster; $_SERVER['REMOTE_ADDR'] = '192.168.7.33';
+ok('names off: member gets no names', 'error 401', ws_voters($a));
+ok('names off: a vote answers without short forms', false, isset(ws_vote($a, 'none')['summaries']));
+$conf['rate_anonymous'] = $rate_anonymous_before;
+
 restore_snapshot();
 echo $fail ? "\n$fail FAILED\n" : "\nALL PASSED\n";
 
@@ -285,3 +346,7 @@ function ws_vote($img, $level, $token = null) { // likeBravo.setVote as the curr
 function guest_rows($uid = null) { global $conf; // "user|identifier|photo|rate" of one anonymous account
   $rows = array(); foreach (query2array('SELECT user_id u, anonymous_id a, element_id e, rate r FROM '.RATE_TABLE.' WHERE user_id = '.(int)(null === $uid ? $conf['guest_id'] : $uid).'') as $x) $rows[] = implode('|', $x);
   sort($rows); return $rows; }
+function ws_voters($img) { // likeBravo.getVoters as the current visitor
+  $params = array('image_id'=>$img); $service = null;
+  $r = @like_bravo_ws_get_voters($params, $service);
+  return $r instanceof PwgError ? 'error '.$r->code() : $r; }

@@ -69,6 +69,30 @@
     </ul>
   </fieldset>
 
+  <fieldset class="no-border">
+    <legend>{'Names of voters'|translate}</legend>
+    <ul>
+      <li>
+        <label>
+          {'Show the names of voters'|translate}
+          <select name="show_names">
+{foreach from=$LIKE_BRAVO_SHOW_NAMES item=label key=value}
+            <option value="{$value}"{if $like_bravo.show_names == $value} selected="selected"{/if}>{$label}</option>
+{/foreach}
+          </select>
+        </label>
+        <span class="like-bravo-hint like-bravo-hint-block">{'Votes cast before this was switched on are shown with their names as well. Guests have no name, they appear as a number.'|translate}</span>
+      </li>
+      <li>
+        <label>
+          {'Names in the short form'|translate}
+          <input type="number" name="names_limit" min="1" max="10" step="1" value="{$like_bravo.names_limit}">
+        </label>
+        <span class="like-bravo-hint like-bravo-hint-block">{'The short form appears when the mouse is over a counter, e.g. "Liked by Anna, Ben, Carl and 4 others". A click on the counter shows all names.'|translate}</span>
+      </li>
+    </ul>
+  </fieldset>
+
 </div>
 
 <div class="savebar-footer">

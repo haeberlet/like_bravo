@@ -28,11 +28,34 @@ $lang['Members may rate their own photos'] = 'Mitglieder dürfen eigene Fotos be
 $lang['Guests may like'] = 'Gäste dürfen liken';
 $lang['No effect at the moment: "Rating by guests" is switched off in the Piwigo configuration.'] = 'Derzeit ohne Wirkung: „Bewertungen durch Gäste erlauben“ ist in der Piwigo-Konfiguration ausgeschaltet.';
 $lang['Piwigo tells guests apart by their network address only. Visitors of the same network (same first three parts of an IPv4 address, e.g. a club house or an office) share one vote. Whoever changes the address (VPN, mobile network) and deletes the cookie can vote again. With IPv6 every single address counts, and many connections change theirs regularly.'] = 'Piwigo unterscheidet Gäste nur an ihrer Netzwerkadresse. Besucher aus demselben Netz (gleiche erste drei Teile der IPv4-Adresse, z. B. ein Vereinsheim oder ein Büro) teilen sich eine Stimme. Wer die Adresse wechselt (VPN, Mobilfunk) und das Cookie löscht, kann erneut abstimmen. Bei IPv6 zählt jede einzelne Adresse, und viele Anschlüsse wechseln ihre regelmäßig.';
+$lang['Names of voters'] = 'Namen der Abstimmenden';
+$lang['Show the names of voters'] = 'Namen der Abstimmenden anzeigen';
+$lang['to nobody'] = 'niemandem';
+$lang['to signed-in members'] = 'angemeldeten Mitgliedern';
+$lang['to all visitors'] = 'allen Besuchern';
+$lang['Votes cast before this was switched on are shown with their names as well. Guests have no name, they appear as a number.'] = 'Auch Stimmen, die vor dem Einschalten abgegeben wurden, erscheinen mit Namen. Gäste haben keinen Namen, sie erscheinen als Zahl.';
+$lang['Names in the short form'] = 'Namen in der Kurzform';
+$lang['The short form appears when the mouse is over a counter, e.g. "Liked by Anna, Ben, Carl and 4 others". A click on the counter shows all names.'] = 'Die Kurzform erscheint, wenn die Maus über einem Zähler steht, z. B. „Gefällt Anna, Ben, Carl und 4 weiteren“. Ein Klick auf den Zähler zeigt alle Namen.';
 
 // picture page
-$lang['%d like'] = '%d Like';
-$lang['%d likes'] = '%d Likes';
+$lang['%d like'] = 'Gefällt %d';
+$lang['%d likes'] = 'Gefällt %d';
 $lang['%d bravo'] = '%d Bravo';
 $lang['%d bravos'] = '%d Bravos';
 $lang['Remove my vote'] = 'Stimme zurücknehmen';
 $lang['Your vote could not be saved.'] = 'Deine Stimme konnte nicht gespeichert werden.';
+
+// names of voters
+$lang['Liked by %s'] = 'Gefällt %s';
+$lang['Bravo from %s'] = 'Bravo von %s';
+$lang['you (voter)'] = 'dir';
+$lang['%s and %s'] = '%s und %s';
+$lang['%d other voter'] = '%d weiteren';
+$lang['%d other voters'] = '%d weiteren';
+$lang['%d guest voter'] = '%d Gast';
+$lang['%d guest voters'] = '%d Gästen';
+$lang['+ %d other'] = '+ %d weitere';
+$lang['+ %d others'] = '+ %d weitere';
+$lang['+ %d guest'] = '+ %d Gast';
+$lang['+ %d guests'] = '+ %d Gäste';
+$lang['The names could not be loaded.'] = 'Die Namen konnten nicht geladen werden.';

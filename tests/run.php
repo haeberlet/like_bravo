@@ -284,5 +284,83 @@ check('no rates at all', array(), like_bravo_compute_scores(array(), array(1 => 
 check('a single rated thumbs photo is its own average',
   2.5, like_bravo_compute_scores(rows(9, array(2, 2, 2, 4)), array(9 => BRAVO))[9]['score']);
 
+// --- names of voters --------------------------------------------------------
+check('names: default is members only', 'members', $defaults['show_names']);
+check('names: default short form has 3 names', 3, $defaults['names_limit']);
+check('names: unknown audience falls back', 'members', like_bravo_normalize_conf(array('show_names' => 'everybody'))['show_names']);
+check('names: valid audience is kept', 'all', like_bravo_normalize_conf(array('show_names' => 'all'))['show_names']);
+check('names: limit from a form field', 5, like_bravo_normalize_conf(array('names_limit' => '5'))['names_limit']);
+check('names: limit 0 falls back', 3, like_bravo_normalize_conf(array('names_limit' => 0))['names_limit']);
+check('names: limit 11 falls back', 3, like_bravo_normalize_conf(array('names_limit' => 11))['names_limit']);
+check('names: non-numeric limit falls back', 3, like_bravo_normalize_conf(array('names_limit' => 'x'))['names_limit']);
+
+check('names off: member sees none', false, like_bravo_may_see_names('off', false));
+check('names off: guest sees none', false, like_bravo_may_see_names('off', true));
+check('names for members: member sees them', true, like_bravo_may_see_names('members', false));
+check('names for members: guest sees none', false, like_bravo_may_see_names('members', true));
+check('names for all: member sees them', true, like_bravo_may_see_names('all', false));
+check('names for all: guest sees them', true, like_bravo_may_see_names('all', true));
+check('names: unknown setting shows none', false, like_bravo_may_see_names('', false));
+
+function voter($user_id, $name, $date, $rate, $is_guest = 0)
+{
+  return array('user_id' => (string)$user_id, 'name' => $name, 'date' => $date, 'rate' => (string)$rate, 'is_guest' => (string)$is_guest);
+}
+function names($group)
+{
+  return array_column($group['voters'], 'name');
+}
+
+$voter_rows = array(
+  voter(1, 'Anna', '2026-11-01', 2),
+  voter(2, 'martin', '2026-11-10', 3),
+  voter(3, 'Jürgen', '2026-11-10', 2),
+  voter(4, 'Thomas', '2026-11-05', 4),
+  voter(5, 'Zoe', '2026-11-12', 5),
+  voter(6, 'Carl', '2026-11-12', 1),        // dormant
+  voter(7, null, '2026-11-11', 2),          // account is gone
+  voter(9, 'guest', '2026-11-12', 2, 1),
+  voter(9, 'guest', '2026-11-12', 4, 1),
+  voter(9, 'guest', '2026-11-12', 4, 1),
+  );
+$groups = like_bravo_group_voters($voter_rows, BRAVO, 1, true);
+check('voters: own vote first, then newest, same day by name',
+  array('Anna', 'Jürgen', 'martin'), names($groups['like']));
+check('voters: own vote is marked',
+  array(true, false, false), array_column($groups['like']['voters'], 'own'));
+check('voters: bravos newest first', array('Zoe', 'Thomas'), names($groups['bravo']));
+check('voters: guests and lost accounts are numbers',
+  array(1, 1, 0, 2),
+  array($groups['like']['unnamed'], $groups['like']['guests'], $groups['bravo']['unnamed'], $groups['bravo']['guests']));
+check('voters: dormant votes are left out',
+  false, in_array('Carl', array_merge(names($groups['like']), names($groups['bravo']))));
+
+$groups = like_bravo_group_voters($voter_rows, BRAVO, null, false);
+check('voters: anonymous visitor has no own vote, newest first',
+  array('Jürgen', 'martin', 'Anna'), names($groups['like']));
+check('voters: guests left out while they do not take part',
+  array(0, 0), array($groups['like']['guests'], $groups['bravo']['guests']));
+
+$groups = like_bravo_group_voters($voter_rows, LIKE, 4, true);
+check('voters in like mode: everybody is in the like group, own first',
+  array('Thomas', 'Zoe', 'Jürgen', 'martin', 'Anna'), names($groups['like']));
+check('voters in like mode: no bravo group, guests added up',
+  array(array(), 3), array($groups['bravo']['voters'], $groups['like']['guests']));
+check('voters: no votes',
+  array('voters' => array(), 'unnamed' => 0, 'guests' => 0),
+  like_bravo_group_voters(array(), BRAVO, 1, true)['like']);
+
+$summary = like_bravo_summarize_voters($groups['like'], 3);
+check('short form: first names', array('Thomas', 'Zoe', 'Jürgen'), names($summary));
+check('short form: others include lost accounts, guests apart', array(3, 3), array($summary['others'], $summary['guests']));
+$summary = like_bravo_summarize_voters($groups['like'], 10);
+check('short form: limit above the number of voters', array(5, 1), array(count($summary['voters']), $summary['others']));
+check('short form: limit is at least 1', 1, count(like_bravo_summarize_voters($groups['like'], 0)['voters']));
+
+check('list of none', '', like_bravo_join_list(array(), '%s and %s'));
+check('list of one', 'a', like_bravo_join_list(array('a'), '%s and %s'));
+check('list of two', 'a and b', like_bravo_join_list(array('a', 'b'), '%s and %s'));
+check('list of four', 'a, b, c und d', like_bravo_join_list(array('a', 'b', 'c', 'd'), '%s und %s'));
+
 echo ($checks - $failures) . '/' . $checks . " checks passed\n";
 exit($failures > 0 ? 1 : 0);

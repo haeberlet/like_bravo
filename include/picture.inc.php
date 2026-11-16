@@ -1,7 +1,7 @@
 <?php
 defined('PHPWG_ROOT_PATH') or die('Hacking attempt!');
 
-include_once(LIKE_BRAVO_PATH . 'include/score.inc.php');
+include_once(LIKE_BRAVO_PATH . 'include/voters.inc.php');
 include_once(LIKE_BRAVO_PATH . 'include/icons.inc.php');
 
 /**
@@ -62,6 +62,12 @@ function like_bravo_picture()
     'bravo' => l10n('Bravo'),
     );
 
+  // names of the voters, only for visitors who may see them
+  $show_names = like_bravo_names_visible();
+  $summaries = $show_names
+    ? like_bravo_summary_texts(like_bravo_get_voters($image_id, $mode))
+    : array('like' => '', 'bravo' => '');
+
   $buttons = array();
   if ($can_vote)
   {
@@ -83,6 +89,12 @@ function like_bravo_picture()
     'SHOW_BRAVOS' => LIKE_BRAVO_MODE_BOTH == $mode,
     'LIKES_TEXT' => like_bravo_count_text($votes['likes'], '%d like', '%d likes'),
     'BRAVOS_TEXT' => like_bravo_count_text($votes['bravos'], '%d bravo', '%d bravos'),
+    'SHOW_NAMES' => $show_names,
+    'LIKES_SUMMARY' => $summaries['like'],
+    'BRAVOS_SUMMARY' => $summaries['bravo'],
+    'LIKES_COUNT' => $votes['likes'],
+    'BRAVOS_COUNT' => $votes['bravos'],
+    'VOTERS_URL' => get_root_url().'ws.php?format=json&method=likeBravo.getVoters',
     'LEVEL' => $can_vote
       ? like_bravo_get_user_level($image_id, $user['id'], $mode, $anonymous ? like_bravo_current_anonymous_id() : null)
       : 'none',
@@ -107,21 +119,6 @@ function like_bravo_picture()
   {
     $template->concat('PLUGIN_PICTURE_AFTER', $html);
   }
-}
-
-/**
- * Counter text such as "0 likes", "1 like", "2 likes". Singular only for
- * exactly one, which is right for German and English; Piwigo's own rule
- * would give "0 Like" in German. js/like_bravo.js uses the same rule.
- *
- * @param int $count
- * @param string $singular_key
- * @param string $plural_key
- * @return string
- */
-function like_bravo_count_text($count, $singular_key, $plural_key)
-{
-  return sprintf(l10n(1 == $count ? $singular_key : $plural_key), $count);
 }
 
 /**

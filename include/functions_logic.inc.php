@@ -49,6 +49,14 @@ function like_bravo_undo_icon_names()
 }
 
 /**
+ * @return string[] possible audiences for the names of voters
+ */
+function like_bravo_show_names_values()
+{
+  return array('off', 'members', 'all');
+}
+
+/**
  * @return array default plugin configuration
  */
 function like_bravo_default_conf()
@@ -59,6 +67,8 @@ function like_bravo_default_conf()
     'icon_undo' => 'none',
     'allow_own_photos' => true,
     'allow_guests' => false,
+    'show_names' => 'members',  // who sees the names of voters, see like_bravo_show_names_values()
+    'names_limit' => 3,         // names in the short form
     );
 }
 
@@ -94,6 +104,16 @@ function like_bravo_normalize_conf($stored)
 
   $conf['allow_own_photos'] = (bool)$conf['allow_own_photos'];
   $conf['allow_guests'] = (bool)$conf['allow_guests'];
+
+  if (!in_array($conf['show_names'], like_bravo_show_names_values(), true))
+  {
+    $conf['show_names'] = $defaults['show_names'];
+  }
+  if (!is_numeric($conf['names_limit']) or $conf['names_limit'] < 1 or $conf['names_limit'] > 10)
+  {
+    $conf['names_limit'] = $defaults['names_limit'];
+  }
+  $conf['names_limit'] = (int)$conf['names_limit'];
 
   return $conf;
 }
@@ -398,4 +418,139 @@ function like_bravo_compute_scores($rate_rows, $image_modes, $count_guests=false
   }
 
   return $results;
+}
+
+/**
+ * Whether a visitor sees the names of voters.
+ *
+ * @param string $show_names plugin option: 'off', 'members' or 'all'
+ * @param bool $is_anonymous visitor is a guest or uses a "generic" account
+ * @return bool
+ */
+function like_bravo_may_see_names($show_names, $is_anonymous)
+{
+  switch ($show_names)
+  {
+    case 'all':
+      return true;
+    case 'members':
+      return !$is_anonymous;
+    default:
+      return false;
+  }
+}
+
+/**
+ * Sorts the votes of one photo into the voters of its likes and bravos.
+ *
+ * Order of the voters: the visitor's own vote first, then the newest votes,
+ * votes of the same day by name (the rate table stores no time of day).
+ * Anonymous visitors have no name: they are a number, and only if guests
+ * take part. A member whose account is gone is counted as unnamed.
+ *
+ * @param array $rows rows of 'user_id', 'name' (null if unknown), 'date'
+ *    (YYYY-MM-DD), 'rate' and 'is_guest'
+ * @param int $mode mode of the photo
+ * @param int|null $own_user_id member looking at the photo, null for an
+ *    anonymous visitor
+ * @param bool $count_guests as like_bravo_guests_take_part()
+ * @return array 'like' and 'bravo' => array('voters' => list of
+ *    array('name' => string, 'own' => bool), 'unnamed' => int, 'guests' => int)
+ */
+function like_bravo_group_voters($rows, $mode, $own_user_id, $count_guests)
+{
+  $groups = array(
+    'like' => array('voters' => array(), 'unnamed' => 0, 'guests' => 0),
+    'bravo' => array('voters' => array(), 'unnamed' => 0, 'guests' => 0),
+    );
+
+  foreach ($rows as $row)
+  {
+    $level = like_bravo_classify_rate($row['rate'], $mode);
+    if (null === $level)
+    {
+      continue;
+    }
+
+    if (!empty($row['is_guest']))
+    {
+      if ($count_guests)
+      {
+        $groups[$level]['guests']++;
+      }
+    }
+    elseif (!isset($row['name']) or '' === (string)$row['name'])
+    {
+      $groups[$level]['unnamed']++;
+    }
+    else
+    {
+      $groups[$level]['voters'][] = array(
+        'name' => (string)$row['name'],
+        'own' => (null !== $own_user_id and (int)$row['user_id'] == (int)$own_user_id),
+        'date' => (string)$row['date'],
+        );
+    }
+  }
+
+  foreach ($groups as $level => $group)
+  {
+    usort($group['voters'], function($a, $b) {
+      if ($a['own'] != $b['own'])
+      {
+        return $a['own'] ? -1 : 1;
+      }
+      if ($a['date'] != $b['date'])
+      {
+        return strcmp($b['date'], $a['date']);
+      }
+      return strcasecmp($a['name'], $b['name']);
+    });
+
+    $groups[$level]['voters'] = array_map(function($voter) {
+      return array('name' => $voter['name'], 'own' => $voter['own']);
+    }, $group['voters']);
+  }
+
+  return $groups;
+}
+
+/**
+ * Short form of one group of voters: the first names and how many more.
+ *
+ * @param array $group one group of like_bravo_group_voters()
+ * @param int $limit highest number of names
+ * @return array 'voters' => the first voters, 'others' => int further
+ *    members, 'guests' => int
+ */
+function like_bravo_summarize_voters($group, $limit)
+{
+  $limit = max(1, (int)$limit);
+
+  return array(
+    'voters' => array_slice($group['voters'], 0, $limit),
+    'others' => max(0, count($group['voters']) - $limit) + $group['unnamed'],
+    'guests' => $group['guests'],
+    );
+}
+
+/**
+ * Joins the items of an enumeration: "a", "a and b", "a, b and c".
+ *
+ * @param string[] $items
+ * @param string $and_pattern translated pattern for the last two, e.g. '%s and %s'
+ * @return string
+ */
+function like_bravo_join_list($items, $and_pattern)
+{
+  $items = array_values($items);
+
+  if (count($items) < 2)
+  {
+    return empty($items) ? '' : $items[0];
+  }
+
+  $last = array_pop($items);
+
+  return sprintf($and_pattern, implode(', ', $items), $last);
 }
