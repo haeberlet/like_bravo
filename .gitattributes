@@ -1,0 +1,7 @@
+# Not part of the release archive (git archive, see build.sh)
+/CLAUDE.md      export-ignore
+/KONZEPT.md     export-ignore
+/tests          export-ignore
+/build.sh       export-ignore
+/.gitignore     export-ignore
+/.gitattributes export-ignore
