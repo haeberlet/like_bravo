@@ -13,7 +13,7 @@ if (isset($_POST['submit']))
 
   // Piwigo adds slashes to all request variables
   $posted = array();
-  foreach (array('icon_like', 'icon_bravo', 'icon_undo', 'show_names', 'names_limit') as $key)
+  foreach (array('icon_like', 'icon_bravo', 'icon_undo', 'show_names', 'names_limit', 'position') as $key)
   {
     $posted[$key] = (isset($_POST[$key]) and is_string($_POST[$key])) ? stripslashes($_POST[$key]) : '';
   }
@@ -57,6 +57,10 @@ $template->assign(array(
     'off' => l10n('to nobody'),
     'members' => l10n('to signed-in members'),
     'all' => l10n('to all visitors'),
+    ),
+  'LIKE_BRAVO_POSITIONS' => array(
+    'photo' => l10n('below the photo, without heading'),
+    'info' => l10n('with the photo information'),
     ),
   'LIKE_BRAVO_RATE_ANONYMOUS' => (bool)$conf['rate_anonymous'],
   'LIKE_BRAVO_CSS' => 'plugins/' . LIKE_BRAVO_ID . '/css/admin.css',

@@ -89,8 +89,11 @@ function like_bravo_picture()
     }
   }
 
+  $below_photo = like_bravo_widget_below_photo($settings['position'], $user['theme']);
+
   $template->assign('like_bravo_widget', array(
     'TITLE' => l10n('Member rating'),
+    'BELOW_PHOTO' => $below_photo,
     'IMAGE_ID' => $image_id,
     'SHOW_BRAVOS' => LIKE_BRAVO_MODE_BOTH == $mode,
     'LIKES_TEXT' => like_bravo_count_text($votes['likes'], '%d like', '%d likes'),
@@ -121,6 +124,12 @@ function like_bravo_picture()
     $template->assign('LIKE_BRAVO_WIDGET', $html);
     $template->set_prefilter('picture', 'like_bravo_smartpocket_prefilter');
   }
+  elseif ($below_photo)
+  {
+    // Bootstrap Darkroom has no plugin slot between the photo and its description
+    $template->assign('LIKE_BRAVO_WIDGET', $html);
+    $template->set_prefilter('picture', 'like_bravo_below_photo_prefilter');
+  }
   else
   {
     $template->concat('PLUGIN_PICTURE_AFTER', $html);
@@ -147,4 +156,34 @@ function like_bravo_smartpocket_prefilter($content)
   return substr($content, 0, $pos)
     .'{if isset($LIKE_BRAVO_WIDGET)}{$LIKE_BRAVO_WIDGET}{/if}'."\n"
     .substr($content, $pos);
+}
+
+/**
+ * Template prefilter: puts the widget right after the photo of the Bootstrap
+ * Darkroom picture page. If the theme changed and the photo block is not
+ * found, the widget goes to the end of the template showing the photo, and
+ * the script of the widget moves it to the photo information as without
+ * this option. The filter also runs on every template included by the
+ * picture page; those are left alone.
+ *
+ * @param string $content template source
+ * @return string
+ */
+function like_bravo_below_photo_prefilter($content)
+{
+  $slot = '{if isset($LIKE_BRAVO_WIDGET)}{$LIKE_BRAVO_WIDGET}{/if}';
+  $pattern = '#<div id="theImage"[^>]*>\s*\{\$ELEMENT_CONTENT\}\s*</div>#';
+
+  if (preg_match($pattern, $content, $matches, PREG_OFFSET_CAPTURE))
+  {
+    $end = $matches[0][1] + strlen($matches[0][0]);
+    return substr($content, 0, $end)."\n".$slot.substr($content, $end);
+  }
+
+  if (false === strpos($content, '{$ELEMENT_CONTENT}'))
+  {
+    return $content;
+  }
+
+  return $content."\n".$slot;
 }

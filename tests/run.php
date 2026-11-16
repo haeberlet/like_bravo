@@ -435,5 +435,15 @@ check('my likes and bravos: no photo without rating',
   array(like_bravo_filter_voted($my_rates, array(1 => OFF, 2 => LIKE, 5 => OFF), 'like'),
         like_bravo_filter_voted($my_rates, array(1 => OFF, 2 => LIKE, 5 => OFF), 'bravo')));
 
+// --- place of the widget ----------------------------------------------------
+check('position: default below the photo', 'photo', $defaults['position']);
+check('position: unknown value falls back', 'photo', like_bravo_normalize_conf(array('position' => 'top'))['position']);
+check('position: info is kept', 'info', like_bravo_normalize_conf(array('position' => 'info'))['position']);
+check('below the photo in Bootstrap Darkroom', true, like_bravo_widget_below_photo('photo', 'bootstrap_darkroom'));
+check('not below the photo with the option info', false, like_bravo_widget_below_photo('info', 'bootstrap_darkroom'));
+check('not below the photo in other themes',
+  array(false, false, false, false),
+  array_map(function($theme) { return like_bravo_widget_below_photo('photo', $theme); }, array('default', 'elegant', 'modus', 'smartpocket')));
+
 echo ($checks - $failures) . '/' . $checks . " checks passed\n";
 exit($failures > 0 ? 1 : 0);

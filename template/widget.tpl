@@ -3,7 +3,7 @@
 {combine_script id='like_bravo' load='footer' path=$like_bravo_widget.JS_PATH}
 {/if}
 
-<div id="likeBravo" class="like-bravo"
+<div id="likeBravo" class="like-bravo{if $like_bravo_widget.BELOW_PHOTO} like-bravo-below-photo{/if}"
   data-image-id="{$like_bravo_widget.IMAGE_ID}"
   data-level="{$like_bravo_widget.LEVEL}"
   data-url="{$like_bravo_widget.WS_URL|escape:'html'}"
@@ -16,7 +16,9 @@
   data-str-names-error="{'The names could not be loaded.'|translate|escape:'html'}"
   data-voters-url="{$like_bravo_widget.VOTERS_URL|escape:'html'}">
 
+{if !$like_bravo_widget.BELOW_PHOTO}
   <span class="like-bravo-title">{$like_bravo_widget.TITLE|escape:'html'}</span>
+{/if}
 
 {if $like_bravo_widget.BUTTONS}
   <span class="like-bravo-buttons">
@@ -62,6 +64,9 @@
   var widget = document.getElementById('likeBravo');
   var target = document.querySelector('#info-content, #standard, #PictureInfo, .imageInfoTable');
   if (!widget || !target || target.contains(widget)) return;
+  // placed right below the photo by the plugin option: stays there
+  var photo = widget.previousElementSibling;
+  if (/like-bravo-below-photo/.test(widget.className) && photo && 'theImage' == photo.id) return;
   if (/^(UL|OL)$/.test(target.tagName)) {
     var item = document.createElement('li');
     item.className = 'imageInfo';

@@ -46,6 +46,23 @@
   </fieldset>
 
   <fieldset class="no-border">
+    <legend>{'Widget on the photo page'|translate}</legend>
+    <ul>
+      <li>
+        <label>
+          {'Place of the widget'|translate}
+          <select name="position">
+{foreach from=$LIKE_BRAVO_POSITIONS item=label key=value}
+            <option value="{$value}"{if $like_bravo.position == $value} selected="selected"{/if}>{$label}</option>
+{/foreach}
+          </select>
+        </label>
+        <span class="like-bravo-hint like-bravo-hint-block">{'Below the photo is available in the theme Bootstrap Darkroom for now. Other themes show the widget with the photo information.'|translate}</span>
+      </li>
+    </ul>
+  </fieldset>
+
+  <fieldset class="no-border">
     <legend>{'Rating'|translate}</legend>
     <ul>
       <li>

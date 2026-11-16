@@ -15,6 +15,16 @@
   line-height: 1.4;
 }
 
+/* compact form right below the photo, centered like the photo itself */
+.like-bravo.like-bravo-below-photo {
+  margin: -8px auto 12px;
+  padding: 0 8px;
+}
+
+.like-bravo.like-bravo-below-photo .like-bravo-voters {
+  max-width: 480px;
+}
+
 /* inside the photo information block the widget follows its alignment */
 .like-bravo.like-bravo-in-info {
   justify-content: flex-start;

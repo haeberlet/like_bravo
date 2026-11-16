@@ -69,6 +69,36 @@ function like_bravo_show_names_values()
 }
 
 /**
+ * @return string[] possible places of the widget on the photo page
+ */
+function like_bravo_position_values()
+{
+  return array('photo', 'info');
+}
+
+/**
+ * @return string[] themes with a place for the widget right below the photo
+ *    (template prefilter in include/picture.inc.php)
+ */
+function like_bravo_photo_slot_themes()
+{
+  return array('bootstrap_darkroom');
+}
+
+/**
+ * Whether the widget is shown right below the photo, in its compact form
+ * without heading, instead of with the photo information.
+ *
+ * @param string $position plugin option, see like_bravo_position_values()
+ * @param string $theme theme of the visitor
+ * @return bool
+ */
+function like_bravo_widget_below_photo($position, $theme)
+{
+  return 'photo' === $position and in_array($theme, like_bravo_photo_slot_themes(), true);
+}
+
+/**
  * @return array default plugin configuration
  */
 function like_bravo_default_conf()
@@ -81,6 +111,7 @@ function like_bravo_default_conf()
     'allow_guests' => false,
     'show_names' => 'members',  // who sees the names of voters, see like_bravo_show_names_values()
     'names_limit' => 3,         // names in the short form
+    'position' => 'photo',      // place of the widget, see like_bravo_position_values()
     );
 }
 
@@ -126,6 +157,11 @@ function like_bravo_normalize_conf($stored)
     $conf['names_limit'] = $defaults['names_limit'];
   }
   $conf['names_limit'] = (int)$conf['names_limit'];
+
+  if (!in_array($conf['position'], like_bravo_position_values(), true))
+  {
+    $conf['position'] = $defaults['position'];
+  }
 
   return $conf;
 }

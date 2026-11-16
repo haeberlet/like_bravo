@@ -78,6 +78,10 @@ for the rest of the gallery.
 Under Plugins, "Like & Bravo" has a settings page:
 
 * **Icons** for Like, Bravo and "Remove my vote", from a built-in set.
+* **Place of the widget**: right below the photo, as a compact line without
+  heading (default), or with the photo information. Below the photo works in the
+  theme Bootstrap Darkroom for now; other themes always show the widget with the
+  photo information.
 * **Members may rate their own photos** (on by default).
 * **Guests may like** (off by default). It needs Piwigo's own option "Rating by
   guests". Piwigo tells guests apart by their network address only, so guest votes
