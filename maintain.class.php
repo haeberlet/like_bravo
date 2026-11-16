@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS `'.$this->table.'` (
 
   /**
    * Hands the scores back to Piwigo: every photo gets its core star score,
-   * likes counting as 3 and bravos as 5.
+   * likes counting as 2 and bravos as 4.
    */
   function deactivate()
   {
@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS `'.$this->table.'` (
 
   /**
    * Removes everything the plugin created. Votes stay in the native rate
-   * table: they are regular Piwigo ratings (like = 3, bravo = 5).
+   * table: they are regular Piwigo ratings (like = 2, bravo = 4).
    */
   function uninstall()
   {

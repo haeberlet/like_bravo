@@ -55,6 +55,11 @@ function like_bravo_init()
   $conf['like_bravo'] = like_bravo_normalize_conf($stored);
 
   load_language('plugin.lang', LIKE_BRAVO_PATH);
+
+  // The core reads local/language/<code>.lang.php before this event, so the
+  // plugin texts would overwrite it. Reading it again lets a webmaster change
+  // any text of the plugin per language (LocalFilesEditor).
+  load_language('lang', PHPWG_ROOT_PATH.PWG_LOCAL_DIR, array('no_fallback' => true, 'local' => true));
 }
 
 /**

@@ -23,16 +23,11 @@ $lang['Icon for "Bravo"'] = 'Icon für „Bravo“';
 $lang['Icon for "Remove my vote"'] = 'Icon für „Stimme zurücknehmen“';
 $lang['no separate icon'] = 'kein eigenes Icon';
 $lang['A click on the active icon always removes the vote, with or without a separate icon.'] = 'Ein Klick auf das aktive Icon nimmt die Stimme immer zurück, mit oder ohne eigenes Icon.';
-$lang['Labels'] = 'Beschriftungen';
-$lang['Heading'] = 'Überschrift';
-$lang['Label for "Like"'] = 'Beschriftung für „Gefällt mir“';
-$lang['Label for "Bravo"'] = 'Beschriftung für „Bravo“';
-$lang['Leave a label empty to use the translated default.'] = 'Leer lassen, um die übersetzte Standardbeschriftung zu verwenden.';
 $lang['Rating'] = 'Wertung';
-$lang['Score constant'] = 'Score-Konstante';
-$lang['Points needed for half of the maximum score. A like is 1 point, a bravo 2 points.'] = 'Punkte, die für die Hälfte des Höchstwerts nötig sind. Ein „Gefällt mir“ zählt 1 Punkt, ein Bravo 2 Punkte.';
 $lang['Members may rate their own photos'] = 'Mitglieder dürfen eigene Fotos bewerten';
-$lang['The score constant must be a number greater than 0.'] = 'Die Score-Konstante muss eine Zahl größer als 0 sein.';
+$lang['Guests may like'] = 'Gäste dürfen liken';
+$lang['No effect at the moment: "Rating by guests" is switched off in the Piwigo configuration.'] = 'Derzeit ohne Wirkung: „Bewertungen durch Gäste erlauben“ ist in der Piwigo-Konfiguration ausgeschaltet.';
+$lang['Piwigo tells guests apart by their network address only. Visitors of the same network (same first three parts of an IPv4 address, e.g. a club house or an office) share one vote. Whoever changes the address (VPN, mobile network) and deletes the cookie can vote again. With IPv6 every single address counts, and many connections change theirs regularly.'] = 'Piwigo unterscheidet Gäste nur an ihrer Netzwerkadresse. Besucher aus demselben Netz (gleiche erste drei Teile der IPv4-Adresse, z. B. ein Vereinsheim oder ein Büro) teilen sich eine Stimme. Wer die Adresse wechselt (VPN, Mobilfunk) und das Cookie löscht, kann erneut abstimmen. Bei IPv6 zählt jede einzelne Adresse, und viele Anschlüsse wechseln ihre regelmäßig.';
 
 // picture page
 $lang['%d like'] = '%d Like';

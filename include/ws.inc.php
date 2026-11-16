@@ -20,7 +20,7 @@ function like_bravo_ws_add_methods($arr)
       'level' => array('info' => 'none, like, bravo'),
       'pwg_token' => array(),
       ),
-    'Sets or removes the vote of the connected member on a photo.',
+    'Sets or removes the vote of the current visitor on a photo.',
     null,
     array('post_only' => true)
     );
@@ -28,7 +28,8 @@ function like_bravo_ws_add_methods($arr)
 
 /**
  * API method
- * Sets or removes the vote of the connected member on a photo
+ * Sets or removes the vote of the current visitor on a photo. Anonymous
+ * visitors need the plugin option and the Piwigo option "Rating by guests".
  * @param mixed[] $params
  *    @option int image_id
  *    @option string level 'none', 'like' or 'bravo'
@@ -38,7 +39,10 @@ function like_bravo_ws_set_vote($params, &$service)
 {
   global $conf, $user;
 
-  if (is_a_guest())
+  // guests and "generic" accounts, as in rate_picture() of the core
+  $anonymous = like_bravo_is_anonymous();
+
+  if ($anonymous and !like_bravo_guests_take_part_now())
   {
     return new PwgError(401, 'Access denied');
   }
@@ -79,21 +83,35 @@ SELECT DISTINCT id, added_by
     return new PwgError(403, 'This level is not available for this photo');
   }
 
-  if (!$conf['like_bravo']['allow_own_photos']
+  // an anonymous account is shared, none of its photos is "own"
+  if (!$anonymous and !$conf['like_bravo']['allow_own_photos']
       and 'none' !== $params['level']
       and $images[0]['added_by'] == $user['id'])
   {
     return new PwgError(403, 'You cannot rate your own photos');
   }
 
-  like_bravo_set_user_level($image_id, $user['id'], $params['level']);
+  if ($anonymous)
+  {
+    if (!like_bravo_set_anonymous_level($image_id, $params['level']))
+    {
+      return new PwgError(403, 'Rating is not possible');
+    }
+  }
+  else
+  {
+    like_bravo_set_user_level($image_id, $user['id'], $params['level']);
+  }
 
   $votes = like_bravo_get_image_votes($image_id, $mode);
 
   return array(
     'likes' => $votes['likes'],
     'bravos' => $votes['bravos'],
-    'level' => like_bravo_get_user_level($image_id, $user['id'], $mode),
+    'level' => like_bravo_get_user_level(
+      $image_id, $user['id'], $mode,
+      $anonymous ? like_bravo_current_anonymous_id() : null
+      ),
     );
 }
 

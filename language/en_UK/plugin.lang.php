@@ -23,16 +23,11 @@ $lang['Icon for "Bravo"'] = 'Icon for "Bravo"';
 $lang['Icon for "Remove my vote"'] = 'Icon for "Remove my vote"';
 $lang['no separate icon'] = 'no separate icon';
 $lang['A click on the active icon always removes the vote, with or without a separate icon.'] = 'A click on the active icon always removes the vote, with or without a separate icon.';
-$lang['Labels'] = 'Labels';
-$lang['Heading'] = 'Heading';
-$lang['Label for "Like"'] = 'Label for "Like"';
-$lang['Label for "Bravo"'] = 'Label for "Bravo"';
-$lang['Leave a label empty to use the translated default.'] = 'Leave a label empty to use the translated default.';
 $lang['Rating'] = 'Rating';
-$lang['Score constant'] = 'Score constant';
-$lang['Points needed for half of the maximum score. A like is 1 point, a bravo 2 points.'] = 'Points needed for half of the maximum score. A like is 1 point, a bravo 2 points.';
 $lang['Members may rate their own photos'] = 'Members may rate their own photos';
-$lang['The score constant must be a number greater than 0.'] = 'The score constant must be a number greater than 0.';
+$lang['Guests may like'] = 'Guests may like';
+$lang['No effect at the moment: "Rating by guests" is switched off in the Piwigo configuration.'] = 'No effect at the moment: "Rating by guests" is switched off in the Piwigo configuration.';
+$lang['Piwigo tells guests apart by their network address only. Visitors of the same network (same first three parts of an IPv4 address, e.g. a club house or an office) share one vote. Whoever changes the address (VPN, mobile network) and deletes the cookie can vote again. With IPv6 every single address counts, and many connections change theirs regularly.'] = 'Piwigo tells guests apart by their network address only. Visitors of the same network (same first three parts of an IPv4 address, e.g. a club house or an office) share one vote. Whoever changes the address (VPN, mobile network) and deletes the cookie can vote again. With IPv6 every single address counts, and many connections change theirs regularly.';
 
 // picture page
 $lang['%d like'] = '%d like';

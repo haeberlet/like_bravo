@@ -12,9 +12,11 @@ define('LIKE_BRAVO_MODE_INACTIVE', 0);
 define('LIKE_BRAVO_MODE_LIKE', 1);
 define('LIKE_BRAVO_MODE_BOTH', 2);
 
-// Values written to the native rate table.
-define('LIKE_BRAVO_RATE_LIKE', 3);
-define('LIKE_BRAVO_RATE_BRAVO', 5);
+// Values written to the native rate table, which are also the points a vote
+// is worth. With the six stars of Piwigo (0 to 5) a like is the third star
+// and a bravo the fifth: the top star stays free for a later star rating.
+define('LIKE_BRAVO_RATE_LIKE', 2);
+define('LIKE_BRAVO_RATE_BRAVO', 4);
 
 /**
  * @return int[] all modes that can be stored for an album
@@ -55,11 +57,8 @@ function like_bravo_default_conf()
     'icon_like' => 'thumb',
     'icon_bravo' => 'star',
     'icon_undo' => 'none',
-    'label_title' => '',    // empty labels = translated default
-    'label_like' => '',
-    'label_bravo' => '',
-    'score_constant' => 5.0,
     'allow_own_photos' => true,
+    'allow_guests' => false,
     );
 }
 
@@ -93,29 +92,46 @@ function like_bravo_normalize_conf($stored)
     $conf['icon_undo'] = $defaults['icon_undo'];
   }
 
-  foreach (array('label_title', 'label_like', 'label_bravo') as $key)
-  {
-    $label = is_string($conf[$key]) ? trim(strip_tags($conf[$key])) : '';
-    $conf[$key] = function_exists('mb_substr') ? mb_substr($label, 0, 40) : substr($label, 0, 40);
-  }
-
-  if (!like_bravo_is_valid_score_constant($conf['score_constant']))
-  {
-    $conf['score_constant'] = $defaults['score_constant'];
-  }
-  $conf['score_constant'] = (float)$conf['score_constant'];
   $conf['allow_own_photos'] = (bool)$conf['allow_own_photos'];
+  $conf['allow_guests'] = (bool)$conf['allow_guests'];
 
   return $conf;
 }
 
 /**
- * @param mixed $value
- * @return bool true for a number greater than 0 and at most 1000
+ * Whether anonymous visitors (guests and "generic" accounts) take part on
+ * thumbs photos: they may vote and their votes count. The plugin option
+ * only works together with the Piwigo option "Rating by guests".
+ *
+ * @param bool $allow_guests plugin option
+ * @param bool $rate_anonymous $conf['rate_anonymous'] of Piwigo
+ * @return bool
  */
-function like_bravo_is_valid_score_constant($value)
+function like_bravo_guests_take_part($allow_guests, $rate_anonymous)
 {
-  return is_numeric($value) and $value > 0 and $value <= 1000;
+  return (bool)$allow_guests and (bool)$rate_anonymous;
+}
+
+/**
+ * Identifier Piwigo stores with every rate, the only thing that tells two
+ * anonymous visitors apart. Same rule as rate_picture() in the core: the
+ * address is split at dots and, with more than three parts, the last one is
+ * dropped. All of an IPv4 /24 network share one identifier; an IPv6 address
+ * has no dots and is kept whole.
+ *
+ * @param string $remote_addr
+ * @return string
+ */
+function like_bravo_anonymous_id($remote_addr)
+{
+  $parts = explode('.', (string)$remote_addr);
+
+  if (count($parts) > 3)
+  {
+    array_pop($parts);
+  }
+
+  return implode('.', $parts);
 }
 
 /**
@@ -159,8 +175,8 @@ function like_bravo_combine_modes($modes)
 /**
  * How a stored rate counts in a given mode.
  *
- * Like + Bravo: 3 = like, 4-5 = bravo. Like: 3-5 = like.
- * Rates 0-2 are dormant: kept in the database but not counted.
+ * Like + Bravo: 2-3 = like, 4-5 = bravo. Like: 2-5 = like.
+ * Rates 0-1 are dormant: kept in the database but not counted.
  *
  * @param int $rate
  * @param int $mode
@@ -175,7 +191,7 @@ function like_bravo_classify_rate($rate, $mode)
     return null;
   }
 
-  if ($mode == LIKE_BRAVO_MODE_BOTH and $rate > LIKE_BRAVO_RATE_LIKE)
+  if ($mode == LIKE_BRAVO_MODE_BOTH and $rate >= LIKE_BRAVO_RATE_BRAVO)
   {
     return 'bravo';
   }
@@ -213,24 +229,39 @@ function like_bravo_count_votes($rates, $mode)
 }
 
 /**
- * Score of a photo in a thumbs mode: 5 * P / (P + k), P = likes + 2 * bravos.
- * Rises with every vote and stays below 5, like a star rating score.
+ * Points of a photo in a thumbs mode: 2 for every like, 4 for every bravo,
+ * whatever star value the vote was stored with.
  *
  * @param int $likes
  * @param int $bravos
- * @param float $k score constant (points needed to reach half of the maximum)
+ * @return int
+ */
+function like_bravo_points($likes, $bravos)
+{
+  return LIKE_BRAVO_RATE_LIKE * $likes + LIKE_BRAVO_RATE_BRAVO * $bravos;
+}
+
+/**
+ * Score of a photo in a thumbs mode: 5 * P / (P + A), with P = points of the
+ * photo and A = average points of all rated thumbs photos of the gallery.
+ *
+ * A photo with average points gets 2.5, with twice the average 3.33, with
+ * four times the average 4. The score rises with every vote and stays below
+ * 5, like a star rating score, and the scale is the same in a small and in
+ * a large gallery.
+ *
+ * @param int $points
+ * @param float $average_points
  * @return float|null null without any counting vote (photo is "not rated")
  */
-function like_bravo_score($likes, $bravos, $k)
+function like_bravo_score($points, $average_points)
 {
-  $points = $likes + 2 * $bravos;
-
   if ($points <= 0)
   {
     return null;
   }
 
-  return round(5 * $points / ($points + $k), 2);
+  return round(5 * $points / ($points + $average_points), 2);
 }
 
 /**
@@ -276,18 +307,19 @@ function like_bravo_level_to_rate($level)
  * m and C are taken from star photos only, so likes and bravos elsewhere in
  * the gallery never move the score of a star photo.
  *
- * Photos in a thumbs mode get like_bravo_score(). Rates of guests do not
- * count there: likes and bravos are bound to a member account.
+ * Photos in a thumbs mode get like_bravo_score(); the average is taken from
+ * thumbs photos with at least one counting vote. Rates of anonymous
+ * visitors count there only if $count_guests is set, else they are dormant.
  *
- * @param array $rate_rows rows of 'element_id', 'rate', 'is_guest' and 'n'
- *    (number of identical rates)
+ * @param array $rate_rows rows of 'element_id', 'rate', 'is_guest' (rate of
+ *    an anonymous visitor) and 'n' (number of identical rates)
  * @param array $image_modes image_id => mode, photos in a thumbs mode;
  *    any photo not listed is a star photo
- * @param float $k score constant for thumbs photos
+ * @param bool $count_guests as like_bravo_guests_take_part()
  * @return array image_id => 'score' (float|null), 'average' (float|null),
  *    'count' (int); thumbs photos also have 'likes' and 'bravos'
  */
-function like_bravo_compute_scores($rate_rows, $image_modes, $k)
+function like_bravo_compute_scores($rate_rows, $image_modes, $count_guests=false)
 {
   $stars = array();
   $thumbs = array();
@@ -313,7 +345,7 @@ function like_bravo_compute_scores($rate_rows, $image_modes, $k)
     {
       $thumbs[$id] = array('likes' => 0, 'bravos' => 0);
     }
-    if (empty($row['is_guest']))
+    if ($count_guests or empty($row['is_guest']))
     {
       $level = like_bravo_classify_rate($row['rate'], $mode);
       if ('like' == $level)
@@ -346,10 +378,18 @@ function like_bravo_compute_scores($rate_rows, $image_modes, $k)
     }
   }
 
+  $points = array();
+  foreach ($thumbs as $id => $item)
+  {
+    $points[$id] = like_bravo_points($item['likes'], $item['bravos']);
+  }
+  $rated = array_filter($points);
+  $average_points = empty($rated) ? 0 : array_sum($rated) / count($rated);
+
   foreach ($thumbs as $id => $item)
   {
     $results[$id] = array(
-      'score' => like_bravo_score($item['likes'], $item['bravos'], $k),
+      'score' => like_bravo_score($points[$id], $average_points),
       'average' => null,
       'count' => $item['likes'] + $item['bravos'],
       'likes' => $item['likes'],

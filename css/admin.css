@@ -38,3 +38,14 @@
   font-weight: normal;
   opacity: 0.8;
 }
+
+.like-bravo-hint-block {
+  display: block;
+  max-width: 60em;
+  margin-top: 4px;
+}
+
+.like-bravo-warning {
+  opacity: 1;
+  color: #c8641a;
+}

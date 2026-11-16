@@ -1,4 +1,4 @@
-/* Like & Bravo: sets, changes and removes the vote of the connected member. */
+/* Like & Bravo: sets, changes and removes the vote of the current visitor. */
 (function() {
   'use strict';
 

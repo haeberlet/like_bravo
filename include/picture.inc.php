@@ -48,8 +48,9 @@ function like_bravo_picture()
   $settings = $conf['like_bravo'];
   $votes = like_bravo_get_image_votes($image_id, $mode);
 
-  $can_vote = !is_a_guest();
-  if ($can_vote and !$settings['allow_own_photos']
+  $anonymous = like_bravo_is_anonymous();
+  $can_vote = (!$anonymous or like_bravo_guests_take_part_now());
+  if ($can_vote and !$anonymous and !$settings['allow_own_photos']
       and isset($picture['current']['added_by'])
       and $picture['current']['added_by'] == $user['id'])
   {
@@ -57,8 +58,8 @@ function like_bravo_picture()
   }
 
   $labels = array(
-    'like' => '' != $settings['label_like'] ? $settings['label_like'] : l10n('Like'),
-    'bravo' => '' != $settings['label_bravo'] ? $settings['label_bravo'] : l10n('Bravo'),
+    'like' => l10n('Like'),
+    'bravo' => l10n('Bravo'),
     );
 
   $buttons = array();
@@ -77,12 +78,14 @@ function like_bravo_picture()
   }
 
   $template->assign('like_bravo_widget', array(
-    'TITLE' => '' != $settings['label_title'] ? $settings['label_title'] : l10n('Member rating'),
+    'TITLE' => l10n('Member rating'),
     'IMAGE_ID' => $image_id,
     'SHOW_BRAVOS' => LIKE_BRAVO_MODE_BOTH == $mode,
     'LIKES_TEXT' => like_bravo_count_text($votes['likes'], '%d like', '%d likes'),
     'BRAVOS_TEXT' => like_bravo_count_text($votes['bravos'], '%d bravo', '%d bravos'),
-    'LEVEL' => $can_vote ? like_bravo_get_user_level($image_id, $user['id'], $mode) : 'none',
+    'LEVEL' => $can_vote
+      ? like_bravo_get_user_level($image_id, $user['id'], $mode, $anonymous ? like_bravo_current_anonymous_id() : null)
+      : 'none',
     'BUTTONS' => $buttons,
     'UNDO_ICON' => ($can_vote and 'none' != $settings['icon_undo']) ? like_bravo_icon($settings['icon_undo']) : '',
     'PWG_TOKEN' => $can_vote ? get_pwg_token() : '',

@@ -46,46 +46,25 @@
   </fieldset>
 
   <fieldset class="no-border">
-    <legend>{'Labels'|translate}</legend>
-    <ul>
-      <li>
-        <label>
-          {'Heading'|translate}
-          <input type="text" name="label_title" size="30" maxlength="40" value="{$like_bravo.label_title|escape:'html'}" placeholder="{'Member rating'|translate}">
-        </label>
-      </li>
-      <li>
-        <label>
-          {'Label for "Like"'|translate}
-          <input type="text" name="label_like" size="30" maxlength="40" value="{$like_bravo.label_like|escape:'html'}" placeholder="{'Like'|translate}">
-        </label>
-      </li>
-      <li>
-        <label>
-          {'Label for "Bravo"'|translate}
-          <input type="text" name="label_bravo" size="30" maxlength="40" value="{$like_bravo.label_bravo|escape:'html'}" placeholder="{'Bravo'|translate}">
-        </label>
-      </li>
-    </ul>
-    <p class="like-bravo-hint">{'Leave a label empty to use the translated default.'|translate}</p>
-  </fieldset>
-
-  <fieldset class="no-border">
     <legend>{'Rating'|translate}</legend>
     <ul>
-      <li>
-        <label>
-          {'Score constant'|translate}
-          <input type="text" name="score_constant" size="4" maxlength="7" value="{$like_bravo.score_constant}">
-        </label>
-        <span class="like-bravo-hint">{'Points needed for half of the maximum score. A like is 1 point, a bravo 2 points.'|translate}</span>
-      </li>
       <li>
         <label class="font-checkbox">
           <span class="icon-check"></span>
           <input type="checkbox" name="allow_own_photos"{if $like_bravo.allow_own_photos} checked="checked"{/if}>
           {'Members may rate their own photos'|translate}
         </label>
+      </li>
+      <li>
+        <label class="font-checkbox">
+          <span class="icon-check"></span>
+          <input type="checkbox" name="allow_guests"{if $like_bravo.allow_guests} checked="checked"{/if}>
+          {'Guests may like'|translate}
+        </label>
+{if !$LIKE_BRAVO_RATE_ANONYMOUS}
+        <span class="like-bravo-hint like-bravo-hint-block like-bravo-warning"><i class="icon-attention"></i> {'No effect at the moment: "Rating by guests" is switched off in the Piwigo configuration.'|translate}</span>
+{/if}
+        <span class="like-bravo-hint like-bravo-hint-block">{'Piwigo tells guests apart by their network address only. Visitors of the same network (same first three parts of an IPv4 address, e.g. a club house or an office) share one vote. Whoever changes the address (VPN, mobile network) and deletes the cookie can vote again. With IPv6 every single address counts, and many connections change theirs regularly.'|translate}</span>
       </li>
     </ul>
   </fieldset>
