@@ -366,5 +366,29 @@ check('list of one', 'a', like_bravo_join_list(array('a'), '%s and %s'));
 check('list of two', 'a and b', like_bravo_join_list(array('a', 'b'), '%s and %s'));
 check('list of four', 'a, b, c und d', like_bravo_join_list(array('a', 'b', 'c', 'd'), '%s und %s'));
 
+// --- personal pages ---------------------------------------------------------
+check('pages: none without any thumbs album', array(), like_bravo_sections(array()));
+check('pages: none if every explicit mode is inactive', array(), like_bravo_sections(array(4 => INACTIVE)));
+check('pages: likes only with a like album', array('my_likes' => 'like'), like_bravo_sections(array(4 => LIKE, 5 => INACTIVE)));
+check('pages: likes and bravos with a like + bravo album',
+  array('my_likes' => 'like', 'my_bravos' => 'bravo'), like_bravo_sections(array(4 => INACTIVE, 7 => BRAVO)));
+check('pages: modes read as strings from the database',
+  array('my_likes' => 'like', 'my_bravos' => 'bravo'), like_bravo_sections(array('7' => '2')));
+
+// photo 1 like + bravo, photo 2 like, photo 3 like + bravo, photo 4 star photo, photo 5 like + bravo
+$my_rates = array(
+  array('element_id' => '5', 'rate' => '4'),
+  array('element_id' => '4', 'rate' => '5'),
+  array('element_id' => '3', 'rate' => '1'),
+  array('element_id' => '2', 'rate' => '5'),
+  array('element_id' => '1', 'rate' => '2'),
+  );
+$my_modes = array(1 => BRAVO, 2 => LIKE, 3 => BRAVO, 5 => BRAVO);
+check('my likes: order kept, bravo in a like album is a like, no star photo, no dormant vote',
+  array(2, 1), like_bravo_filter_voted($my_rates, $my_modes, 'like'));
+check('my bravos: a bravo is not on the like page', array(5), like_bravo_filter_voted($my_rates, $my_modes, 'bravo'));
+check('my likes: nothing without thumbs photos', array(), like_bravo_filter_voted($my_rates, array(), 'like'));
+check('my likes: no rates', array(), like_bravo_filter_voted(array(), $my_modes, 'like'));
+
 echo ($checks - $failures) . '/' . $checks . " checks passed\n";
 exit($failures > 0 ? 1 : 0);

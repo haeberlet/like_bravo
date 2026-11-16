@@ -59,3 +59,9 @@ $lang['+ %d others'] = '+ %d weitere';
 $lang['+ %d guest'] = '+ %d Gast';
 $lang['+ %d guests'] = '+ %d Gäste';
 $lang['The names could not be loaded.'] = 'Die Namen konnten nicht geladen werden.';
+
+// personal pages in the menu block "Explore"
+$lang['My likes'] = "Meine Likes";
+$lang['My bravos'] = "Meine Bravos";
+$lang['display the photos you like'] = "Fotos anzeigen, die mir gefallen";
+$lang['display the photos you gave a bravo'] = "Fotos anzeigen, denen ich ein Bravo gegeben habe";

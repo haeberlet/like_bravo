@@ -554,3 +554,57 @@ function like_bravo_join_list($items, $and_pattern)
 
   return sprintf($and_pattern, implode(', ', $items), $last);
 }
+
+/**
+ * Personal pages offered to a member: "my_likes" as soon as any album is in
+ * a thumbs mode, "my_bravos" only if an album is in the mode like + bravo.
+ * The names are also the section part of the page URL.
+ *
+ * @param array $explicit_modes cat_id => mode, albums with an explicit mode
+ * @return array section name => level ('like' or 'bravo')
+ */
+function like_bravo_sections($explicit_modes)
+{
+  $modes = array_map('intval', (array)$explicit_modes);
+  $sections = array();
+
+  if (in_array(LIKE_BRAVO_MODE_LIKE, $modes, true) or in_array(LIKE_BRAVO_MODE_BOTH, $modes, true))
+  {
+    $sections['my_likes'] = 'like';
+  }
+  if (in_array(LIKE_BRAVO_MODE_BOTH, $modes, true))
+  {
+    $sections['my_bravos'] = 'bravo';
+  }
+
+  return $sections;
+}
+
+/**
+ * Photos of a personal page: those where the member's own rate counts as
+ * the given level in the current mode of the photo. A bravo is not a like,
+ * so no photo is on both pages; star photos are on neither.
+ *
+ * @param array $rows the member's rates, rows of 'element_id' and 'rate',
+ *    in the order the photos are to be shown
+ * @param array $image_modes image_id => mode, photos in a thumbs mode
+ * @param string $level 'like' or 'bravo'
+ * @return int[] image ids, order kept
+ */
+function like_bravo_filter_voted($rows, $image_modes, $level)
+{
+  $ids = array();
+
+  foreach ($rows as $row)
+  {
+    $id = (int)$row['element_id'];
+    $mode = isset($image_modes[$id]) ? (int)$image_modes[$id] : LIKE_BRAVO_MODE_INACTIVE;
+
+    if ($level === like_bravo_classify_rate($row['rate'], $mode))
+    {
+      $ids[] = $id;
+    }
+  }
+
+  return $ids;
+}

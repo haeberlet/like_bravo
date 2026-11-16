@@ -308,6 +308,28 @@ ok('names off: member gets no names', 'error 401', ws_voters($a));
 ok('names off: a vote answers without short forms', false, isset(ws_vote($a, 'none')['summaries']));
 $conf['rate_anonymous'] = $rate_anonymous_before;
 
+echo "== 11. my likes, my bravos\n";
+include_once(LIKE_BRAVO_PATH.'include/sections.inc.php');
+// photo A (like + bravo through T1): own like from section 10 taken back there; photo B in the same album
+pwg_query('DELETE FROM '.RATE_TABLE.' WHERE user_id = '.(int)$me);
+foreach (array(array($a, 2, '2026-11-03'), array($b, 5, '2026-11-08'), array($c, 5, '2026-11-09')) as $v)
+  single_insert(RATE_TABLE, array('user_id'=>$me, 'anonymous_id'=>'10.0.0', 'element_id'=>$v[0], 'rate'=>$v[1], 'date'=>$v[2]));
+$user = $webmaster;
+ok('both pages are offered with a like + bravo album', array('my_likes'=>'like', 'my_bravos'=>'bravo'), like_bravo_available_sections());
+ok('my likes: photo A', array($a), like_bravo_get_my_images('like'));
+ok('my bravos: photo B, not the star photo C', array($b), like_bravo_get_my_images('bravo'));
+mode($t1, LIKE_BRAVO_MODE_LIKE);
+ok('like album only: no bravo page', array('my_likes'=>'like'), like_bravo_available_sections());
+ok('my likes: the bravo now counts as a like, latest vote first', array($b, $a), like_bravo_get_my_images('like'));
+mode($t1, null);
+ok('no thumbs album: no pages', array(), like_bravo_available_sections());
+mode($t1, LIKE_BRAVO_MODE_BOTH);
+visitor($guest, '203.0.113.7');
+ok('guest: no pages', array(), like_bravo_available_sections());
+visitor($generic, '203.0.113.7');
+ok('"generic" account: no pages', array(), like_bravo_available_sections());
+$user = $webmaster; $_SERVER['REMOTE_ADDR'] = '192.168.7.33';
+
 restore_snapshot();
 echo $fail ? "\n$fail FAILED\n" : "\nALL PASSED\n";
 
