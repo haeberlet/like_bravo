@@ -15,10 +15,12 @@
   line-height: 1.4;
 }
 
-/* compact form right below the photo, centered like the photo itself */
+/* compact form right below the photo, centered like the photo itself;
+   same text size as the information cards of Bootstrap Darkroom (.card) */
 .like-bravo.like-bravo-below-photo {
   margin: -8px auto 12px;
   padding: 0 8px;
+  font-size: 0.875rem;
 }
 
 .like-bravo.like-bravo-below-photo .like-bravo-voters {
