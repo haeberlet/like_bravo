@@ -7,13 +7,15 @@ $lang['Member rating'] = "Évaluation des membres";
 // album tab
 $lang['Member rating in this album'] = "Évaluation des membres dans cet album";
 $lang['Inherited'] = "Hérité";
-$lang['Inactive (Piwigo stars)'] = "Inactif (étoiles Piwigo)";
+$lang['Piwigo stars'] = "Étoiles Piwigo";
+$lang['No rating'] = "Aucune évaluation";
 $lang['Like only'] = "« J'aime » seulement";
 $lang['Like + Bravo'] = "« J'aime » + Bravo";
 $lang['currently'] = "actuellement";
 $lang['from album'] = "de l'album";
 $lang['no parent album has a setting'] = "aucun album parent n'a de réglage";
 $lang['The setting applies to this album and all its sub-albums, until a sub-album has its own setting.'] = "Le réglage s'applique à cet album et à tous ses sous-albums, jusqu'à ce qu'un sous-album ait son propre réglage.";
+$lang['A photo in several albums follows the setting that allows the most rating: like + bravo, then like, then stars, then no rating. Albums without any setting count least.'] = "Une photo présente dans plusieurs albums suit le réglage qui permet le plus d'évaluation : « J'aime » + Bravo, puis « J'aime », puis étoiles, puis aucune évaluation. Les albums sans aucun réglage comptent le moins.";
 $lang['Invalid mode'] = "Mode invalide";
 
 // settings

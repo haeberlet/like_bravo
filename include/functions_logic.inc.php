@@ -6,11 +6,13 @@ defined('PHPWG_ROOT_PATH') or die('Hacking attempt!');
  * Everything in this file is covered by tests/run.php.
  */
 
-// Album modes. The numeric order is the conflict rule: the highest mode wins.
-// "Inherited" is not a stored value, it is the absence of an explicit mode.
-define('LIKE_BRAVO_MODE_INACTIVE', 0);
+// Album modes, as stored in the modes table. "Inherited" is not a stored
+// value, it is the absence of an explicit mode. The numbers are no order:
+// the conflict rule is like_bravo_mode_rank().
+define('LIKE_BRAVO_MODE_STARS', 0);  // Piwigo stars, also the default
 define('LIKE_BRAVO_MODE_LIKE', 1);
 define('LIKE_BRAVO_MODE_BOTH', 2);
+define('LIKE_BRAVO_MODE_OFF', 3);    // no rating at all
 
 // Values written to the native rate table, which are also the points a vote
 // is worth. With the six stars of Piwigo (0 to 5) a like is the third star
@@ -24,10 +26,20 @@ define('LIKE_BRAVO_RATE_BRAVO', 4);
 function like_bravo_valid_modes()
 {
   return array(
-    LIKE_BRAVO_MODE_INACTIVE,
+    LIKE_BRAVO_MODE_STARS,
+    LIKE_BRAVO_MODE_OFF,
     LIKE_BRAVO_MODE_LIKE,
     LIKE_BRAVO_MODE_BOTH,
     );
+}
+
+/**
+ * @param int $mode
+ * @return bool true for the modes with like / bravo instead of stars
+ */
+function like_bravo_is_thumbs_mode($mode)
+{
+  return in_array((int)$mode, array(LIKE_BRAVO_MODE_LIKE, LIKE_BRAVO_MODE_BOTH), true);
 }
 
 /**
@@ -156,7 +168,7 @@ function like_bravo_anonymous_id($remote_addr)
 
 /**
  * Resolves the effective mode of an album: its own explicit mode, else the
- * one of the nearest parent album having one, else inactive.
+ * one of the nearest parent album having one, else Piwigo stars.
  *
  * @param string $uppercats categories.uppercats of the album: ids from the
  *    root down to the album itself, comma separated
@@ -177,26 +189,72 @@ function like_bravo_resolve_mode($uppercats, $explicit_modes)
     }
   }
 
-  return array('mode' => LIKE_BRAVO_MODE_INACTIVE, 'source' => null);
+  return array('mode' => LIKE_BRAVO_MODE_STARS, 'source' => null);
 }
 
 /**
- * Mode of a photo from the effective modes of all its albums.
- * The highest mode wins; a photo without album is inactive.
+ * Rank of an effective album mode in the conflict rule for photos in several
+ * albums: any setting beats the default of an album without one; among the
+ * settings, the one allowing more rating wins.
  *
- * @param int[] $modes
+ *   no setting (stars) < no rating < stars < like < like + bravo
+ *
+ * @param array $resolved as like_bravo_resolve_mode()
  * @return int
  */
-function like_bravo_combine_modes($modes)
+function like_bravo_mode_rank($resolved)
 {
-  return empty($modes) ? LIKE_BRAVO_MODE_INACTIVE : (int)max($modes);
+  if (null === $resolved['source'])
+  {
+    return 0;
+  }
+
+  switch ((int)$resolved['mode'])
+  {
+    case LIKE_BRAVO_MODE_OFF:
+      return 1;
+    case LIKE_BRAVO_MODE_STARS:
+      return 2;
+    case LIKE_BRAVO_MODE_LIKE:
+      return 3;
+    case LIKE_BRAVO_MODE_BOTH:
+      return 4;
+    default:
+      return 0;
+  }
+}
+
+/**
+ * Mode of a photo from the effective modes of all its albums, by the rule
+ * of like_bravo_mode_rank(). A photo without album has Piwigo stars.
+ *
+ * @param array[] $resolved_modes as like_bravo_resolve_mode(), one per album
+ * @return int
+ */
+function like_bravo_combine_modes($resolved_modes)
+{
+  $best = LIKE_BRAVO_MODE_STARS;
+  $best_rank = -1;
+
+  foreach ($resolved_modes as $resolved)
+  {
+    $rank = like_bravo_mode_rank($resolved);
+    if ($rank > $best_rank)
+    {
+      $best = (int)$resolved['mode'];
+      $best_rank = $rank;
+    }
+  }
+
+  return $best;
 }
 
 /**
  * How a stored rate counts in a given mode.
  *
  * Like + Bravo: 2-3 = like, 4-5 = bravo. Like: 2-5 = like.
- * Rates 0-1 are dormant: kept in the database but not counted.
+ * Rates 0-1 are dormant: kept in the database but not counted. In the
+ * modes stars and no rating, no rate is a like or a bravo.
  *
  * @param int $rate
  * @param int $mode
@@ -206,7 +264,7 @@ function like_bravo_classify_rate($rate, $mode)
 {
   $rate = (int)$rate;
 
-  if ($mode == LIKE_BRAVO_MODE_INACTIVE or $rate < LIKE_BRAVO_RATE_LIKE)
+  if (!like_bravo_is_thumbs_mode($mode) or $rate < LIKE_BRAVO_RATE_LIKE)
   {
     return null;
   }
@@ -321,7 +379,7 @@ function like_bravo_level_to_rate($level)
 /**
  * Computes the rating score of every rated photo.
  *
- * Star photos (inactive mode) get the Piwigo core score, a bayesian average
+ * Star photos get the Piwigo core score, a bayesian average
  *   (C * m + sum of rates) / (C + number of rates)
  * with m = average of all rates and C = average number of rates per photo.
  * m and C are taken from star photos only, so likes and bravos elsewhere in
@@ -331,9 +389,12 @@ function like_bravo_level_to_rate($level)
  * thumbs photos with at least one counting vote. Rates of anonymous
  * visitors count there only if $count_guests is set, else they are dormant.
  *
+ * Photos in the mode no rating get no result: they have no score, and
+ * their rates are in neither average.
+ *
  * @param array $rate_rows rows of 'element_id', 'rate', 'is_guest' (rate of
  *    an anonymous visitor) and 'n' (number of identical rates)
- * @param array $image_modes image_id => mode, photos in a thumbs mode;
+ * @param array $image_modes image_id => mode, photos not in the mode stars;
  *    any photo not listed is a star photo
  * @param bool $count_guests as like_bravo_guests_take_part()
  * @return array image_id => 'score' (float|null), 'average' (float|null),
@@ -348,9 +409,9 @@ function like_bravo_compute_scores($rate_rows, $image_modes, $count_guests=false
   {
     $id = (int)$row['element_id'];
     $n = (int)$row['n'];
-    $mode = isset($image_modes[$id]) ? (int)$image_modes[$id] : LIKE_BRAVO_MODE_INACTIVE;
+    $mode = isset($image_modes[$id]) ? (int)$image_modes[$id] : LIKE_BRAVO_MODE_STARS;
 
-    if (LIKE_BRAVO_MODE_INACTIVE == $mode)
+    if (LIKE_BRAVO_MODE_STARS == $mode)
     {
       if (!isset($stars[$id]))
       {
@@ -358,6 +419,11 @@ function like_bravo_compute_scores($rate_rows, $image_modes, $count_guests=false
       }
       $stars[$id]['count'] += $n;
       $stars[$id]['sum'] += $n * (int)$row['rate'];
+      continue;
+    }
+
+    if (!like_bravo_is_thumbs_mode($mode))
+    {
       continue;
     }
 
@@ -583,11 +649,12 @@ function like_bravo_sections($explicit_modes)
 /**
  * Photos of a personal page: those where the member's own rate counts as
  * the given level in the current mode of the photo. A bravo is not a like,
- * so no photo is on both pages; star photos are on neither.
+ * so no photo is on both pages; star photos and photos without rating are
+ * on neither.
  *
  * @param array $rows the member's rates, rows of 'element_id' and 'rate',
  *    in the order the photos are to be shown
- * @param array $image_modes image_id => mode, photos in a thumbs mode
+ * @param array $image_modes image_id => mode, photos not in the mode stars
  * @param string $level 'like' or 'bravo'
  * @return int[] image ids, order kept
  */
@@ -598,7 +665,7 @@ function like_bravo_filter_voted($rows, $image_modes, $level)
   foreach ($rows as $row)
   {
     $id = (int)$row['element_id'];
-    $mode = isset($image_modes[$id]) ? (int)$image_modes[$id] : LIKE_BRAVO_MODE_INACTIVE;
+    $mode = isset($image_modes[$id]) ? (int)$image_modes[$id] : LIKE_BRAVO_MODE_STARS;
 
     if ($level === like_bravo_classify_rate($row['rate'], $mode))
     {

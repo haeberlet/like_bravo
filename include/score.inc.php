@@ -7,7 +7,8 @@ defined('PHPWG_ROOT_PATH') or die('Hacking attempt!');
  */
 
 /**
- * @return array image_id => mode for all photos in a thumbs mode
+ * @return array image_id => mode for all photos not in the mode stars
+ *    (thumbs modes and no rating)
  */
 function like_bravo_get_all_image_modes()
 {
@@ -18,6 +19,8 @@ function like_bravo_get_all_image_modes()
     return array();
   }
 
+  // albums without any setting rank lowest and never decide a photo's mode,
+  // so only albums with a setting of their own or of a parent are needed
   $query = '
 SELECT id, uppercats
   FROM '.CATEGORIES_TABLE.'
@@ -26,9 +29,9 @@ SELECT id, uppercats
   foreach (query2array($query, 'id', 'uppercats') as $cat_id => $uppercats)
   {
     $resolved = like_bravo_resolve_mode($uppercats, $explicit_modes);
-    if (LIKE_BRAVO_MODE_INACTIVE != $resolved['mode'])
+    if (null !== $resolved['source'])
     {
-      $cat_modes[(int)$cat_id] = $resolved['mode'];
+      $cat_modes[(int)$cat_id] = $resolved;
     }
   }
 
@@ -48,7 +51,17 @@ SELECT image_id, category_id
     $modes_of[(int)$row['image_id']][] = $cat_modes[(int)$row['category_id']];
   }
 
-  return array_map('like_bravo_combine_modes', $modes_of);
+  $image_modes = array();
+  foreach ($modes_of as $image_id => $resolved_modes)
+  {
+    $mode = like_bravo_combine_modes($resolved_modes);
+    if (LIKE_BRAVO_MODE_STARS != $mode)
+    {
+      $image_modes[$image_id] = $mode;
+    }
+  }
+
+  return $image_modes;
 }
 
 /**

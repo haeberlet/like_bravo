@@ -33,6 +33,7 @@
 {/foreach}
     </ul>
     <p class="like-bravo-hint">{'The setting applies to this album and all its sub-albums, until a sub-album has its own setting.'|translate}</p>
+    <p class="like-bravo-hint">{'A photo in several albums follows the setting that allows the most rating: like + bravo, then like, then stars, then no rating. Albums without any setting count least.'|translate}</p>
   </fieldset>
 
 </div>

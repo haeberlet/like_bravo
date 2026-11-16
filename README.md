@@ -1,8 +1,8 @@
 # Like & Bravo
 
 A plugin for [Piwigo](https://piwigo.org) 16 that replaces the star rating by
-"Like", or by "Like" and "Bravo", in the albums you choose. All other albums keep
-their stars.
+"Like", or by "Like" and "Bravo", in the albums you choose. Other albums keep
+their stars, or have no rating at all.
 
 It is built on Piwigo's own rating system: votes are stored as ordinary ratings,
 "Best rated" keeps working, and an album can be switched between stars and likes
@@ -52,20 +52,26 @@ and "My bravos", with the latest votes first.
 ## Choosing the albums
 
 Open an album in the administration and go to the tab "Member rating". Each album
-has one of four settings:
+has one of five settings:
 
 | Setting | Effect |
 |---|---|
-| Inherited (default) | the setting of the nearest parent album that has one |
-| Inactive | Piwigo's stars, also if a parent album says otherwise |
+| Inherited (default) | the setting of the nearest parent album that has one; Piwigo's stars if none has |
+| Piwigo stars | Piwigo's stars, also if a parent album says otherwise |
+| No rating | no stars, no buttons, no score; the photos are left out of "Best rated" |
 | Like only | the "Like" button |
 | Like + Bravo | the "Like" and the "Bravo" button |
 
 ![Tab "Member rating" of an album](docs/screenshots/album-tab.png)
 
 A setting applies to the album and all its sub-albums until a sub-album has its
-own. A photo that belongs to several albums gets the highest of their settings:
-Like + Bravo before Like only before Inactive.
+own. A photo that belongs to several albums follows the setting that allows the
+most rating: Like + Bravo before Like only before Piwigo stars before No rating.
+Albums without any setting, of their own or inherited, count least: a photo in an
+album without rating and in an album without any setting has no rating.
+
+"No rating" needs no change to the Piwigo configuration: "Allow rating" stays on
+for the rest of the gallery.
 
 ## Settings
 

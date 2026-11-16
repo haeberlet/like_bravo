@@ -7,13 +7,15 @@ $lang['Member rating'] = 'Member rating';
 // album tab
 $lang['Member rating in this album'] = 'Member rating in this album';
 $lang['Inherited'] = 'Inherited';
-$lang['Inactive (Piwigo stars)'] = 'Inactive (Piwigo stars)';
+$lang['Piwigo stars'] = 'Piwigo stars';
+$lang['No rating'] = 'No rating';
 $lang['Like only'] = 'Like only';
 $lang['Like + Bravo'] = 'Like + Bravo';
 $lang['currently'] = 'currently';
 $lang['from album'] = 'from album';
 $lang['no parent album has a setting'] = 'no parent album has a setting';
 $lang['The setting applies to this album and all its sub-albums, until a sub-album has its own setting.'] = 'The setting applies to this album and all its sub-albums, until a sub-album has its own setting.';
+$lang['A photo in several albums follows the setting that allows the most rating: like + bravo, then like, then stars, then no rating. Albums without any setting count least.'] = 'A photo in several albums follows the setting that allows the most rating: like + bravo, then like, then stars, then no rating. Albums without any setting count least.';
 $lang['Invalid mode'] = 'Invalid mode';
 
 // settings

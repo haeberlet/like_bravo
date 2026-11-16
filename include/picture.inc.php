@@ -6,7 +6,7 @@ include_once(LIKE_BRAVO_PATH . 'include/icons.inc.php');
 
 /**
  * Event handler (loc_begin_picture): ignores the native star rating form
- * (picture.php?...&action=rate) on photos in a thumbs mode.
+ * (picture.php?...&action=rate) on all photos that are not star photos.
  */
 function like_bravo_block_native_rate()
 {
@@ -14,7 +14,7 @@ function like_bravo_block_native_rate()
 
   if (isset($_GET['action']) and 'rate' == $_GET['action']
       and isset($page['image_id'])
-      and LIKE_BRAVO_MODE_INACTIVE != like_bravo_get_image_mode($page['image_id']))
+      and LIKE_BRAVO_MODE_STARS != like_bravo_get_image_mode($page['image_id']))
   {
     unset($_GET['action']);
   }
@@ -22,7 +22,8 @@ function like_bravo_block_native_rate()
 
 /**
  * Event handler (loc_end_picture): on photos in a thumbs mode, hides the
- * star rating of the theme and adds the like / bravo widget.
+ * star rating of the theme and adds the like / bravo widget; on photos in
+ * the mode no rating, only hides the star rating.
  */
 function like_bravo_picture()
 {
@@ -36,7 +37,7 @@ function like_bravo_picture()
   $image_id = (int)$page['image_id'];
   $mode = like_bravo_get_image_mode($image_id);
 
-  if (LIKE_BRAVO_MODE_INACTIVE == $mode)
+  if (LIKE_BRAVO_MODE_STARS == $mode)
   {
     return;
   }
@@ -44,6 +45,11 @@ function like_bravo_picture()
   // every theme shows its stars only if these two variables are set
   $template->clear_assign('rating');
   $template->clear_assign('rate_summary');
+
+  if (!like_bravo_is_thumbs_mode($mode))
+  {
+    return;
+  }
 
   $settings = $conf['like_bravo'];
   $votes = like_bravo_get_image_votes($image_id, $mode);

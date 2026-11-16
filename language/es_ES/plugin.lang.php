@@ -7,13 +7,15 @@ $lang['Member rating'] = "Valoración de los miembros";
 // album tab
 $lang['Member rating in this album'] = "Valoración de los miembros en este álbum";
 $lang['Inherited'] = "Heredado";
-$lang['Inactive (Piwigo stars)'] = "Inactivo (estrellas de Piwigo)";
+$lang['Piwigo stars'] = "Estrellas de Piwigo";
+$lang['No rating'] = "Sin valoración";
 $lang['Like only'] = "Solo «Me gusta»";
 $lang['Like + Bravo'] = "«Me gusta» + Bravo";
 $lang['currently'] = "actualmente";
 $lang['from album'] = "del álbum";
 $lang['no parent album has a setting'] = "ningún álbum superior tiene un ajuste";
 $lang['The setting applies to this album and all its sub-albums, until a sub-album has its own setting.'] = "El ajuste se aplica a este álbum y a todos sus subálbumes, hasta que un subálbum tenga su propio ajuste.";
+$lang['A photo in several albums follows the setting that allows the most rating: like + bravo, then like, then stars, then no rating. Albums without any setting count least.'] = "Una foto en varios álbumes sigue el ajuste que permite más valoración: «Me gusta» + Bravo, luego «Me gusta», luego estrellas, luego sin valoración. Los álbumes sin ningún ajuste cuentan lo mínimo.";
 $lang['Invalid mode'] = "Modo no válido";
 
 // settings

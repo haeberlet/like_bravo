@@ -19,7 +19,8 @@ if (!isset($category['id']))
 }
 
 $mode_labels = array(
-  LIKE_BRAVO_MODE_INACTIVE => l10n('Inactive (Piwigo stars)'),
+  LIKE_BRAVO_MODE_STARS => l10n('Piwigo stars'),
+  LIKE_BRAVO_MODE_OFF => l10n('No rating'),
   LIKE_BRAVO_MODE_LIKE => l10n('Like only'),
   LIKE_BRAVO_MODE_BOTH => l10n('Like + Bravo'),
   );

@@ -2,7 +2,8 @@
 /**
  * Scenario tests against a running Piwigo: switching albums between stars
  * and thumbs, photos in several albums, album deletion, deactivation,
- * uninstall and reinstall, votes of guests and "generic" accounts.
+ * uninstall and reinstall, votes of guests and "generic" accounts, albums
+ * without rating.
  *
  * ONLY FOR A TEST GALLERY. The run replaces all ratings and album modes while
  * it works and uninstalls the plugin once. Existing ratings, modes and
@@ -83,15 +84,15 @@ ok('photo B: one like, 2 points', 1.25, $s[$b]);
 ok('photo C stays a star photo, mean from star photos only', 3.5, $s[$c]);
 ok('stored ratings untouched', $sig, rates_sig());
 
-echo "== 3. photo in several albums: highest mode wins\n";
+echo "== 3. photo in several albums: the mode allowing more rating wins\n";
 mode($t3, LIKE_BRAVO_MODE_LIKE);
 ok('photo B in like + bravo (T2) and like (T3): like + bravo', 2, like_bravo_get_image_mode($b));
 ok('photo C only in T3: like', 1, like_bravo_get_image_mode($c));
 $s = scores();
 ok('photo C: 5 and 2 both count as likes, 4 points, average 16/3', 2.14, $s[$c]);
-mode($t2, LIKE_BRAVO_MODE_INACTIVE);
-ok('T2 explicitly inactive stops inheritance: photo A is a star photo', 0, like_bravo_get_image_mode($a));
-ok('photo B now inactive (T2) and like (T3): like', 1, like_bravo_get_image_mode($b));
+mode($t2, LIKE_BRAVO_MODE_STARS);
+ok('T2 explicitly stars stops inheritance: photo A is a star photo', 0, like_bravo_get_image_mode($a));
+ok('photo B now stars (T2) and like (T3): like', 1, like_bravo_get_image_mode($b));
 ok('photo B: bravo is not offered', array('none','like'), like_bravo_allowed_levels(like_bravo_get_image_mode($b)));
 $s = scores();
 ok('photo A back to its star score, alone among star photos', core_scores_of(array($a)), $s[$a]);
@@ -329,6 +330,43 @@ ok('guest: no pages', array(), like_bravo_available_sections());
 visitor($generic, '203.0.113.7');
 ok('"generic" account: no pages', array(), like_bravo_available_sections());
 $user = $webmaster; $_SERVER['REMOTE_ADDR'] = '192.168.7.33';
+
+echo "== 12. no rating\n";
+$conf['like_bravo'] = like_bravo_default_conf();
+include_once(LIKE_BRAVO_PATH.'include/picture.inc.php');
+pwg_query('DELETE FROM '.RATE_TABLE);
+$t4 = create_virtual_category('cl_test_T4')['id'];
+mass_inserts(IMAGE_CATEGORY_TABLE, array('image_id','category_id'), array(
+  array('image_id'=>$b,'category_id'=>$t4), array('image_id'=>$c,'category_id'=>$t4)));
+mode($t1, null);
+vote($a, 9001, 5); vote($a, 9002, 3); vote($b, 9001, 4); vote($b, 9002, 2); vote($c, 9001, 5);
+update_rating_score(); $sig = rates_sig();
+mode($t4, LIKE_BRAVO_MODE_OFF);
+echo "T4=$t4 without rating; photo B in T2 (no setting) + T4, C in T4 + its own albums\n";
+ok('photo B: no rating beats an album without setting', LIKE_BRAVO_MODE_OFF, like_bravo_get_image_mode($b));
+ok('photo C: no rating', LIKE_BRAVO_MODE_OFF, like_bravo_get_image_mode($c));
+ok('photo A unaffected: star photo', LIKE_BRAVO_MODE_STARS, like_bravo_get_image_mode($a));
+$s = scores();
+ok('photos without rating have no score', array(false, false), array(isset($s[$b]), isset($s[$c])));
+ok('photo A: star score from star photos only (alone: m = 4, C = 2)', 4.0, $s[$a]);
+ok('native rating refused', true,
+  @like_bravo_ws_invoke_allowed(true, 'pwg.images.rate', array('image_id'=>$b, 'rate'=>5)) instanceof PwgError);
+$page['image_id'] = $b; $_GET['action'] = 'rate'; like_bravo_block_native_rate();
+ok('native rating form on the picture page ignored', false, isset($_GET['action']));
+unset($page['image_id']);
+ok('plugin vote refused', 'error 403', ws_vote($b, 'like'));
+ok('no names', 'error 403', ws_voters($b));
+ok('no personal pages from an album without rating', array(), like_bravo_available_sections());
+ok('photo B listed as not a star photo', LIKE_BRAVO_MODE_OFF, like_bravo_get_all_image_modes()[$b]);
+mode($t2, LIKE_BRAVO_MODE_STARS);
+ok('explicit stars beat no rating: photo B is a star photo', LIKE_BRAVO_MODE_STARS, like_bravo_get_image_mode($b));
+ok('photo B gets its star score back', true, isset(scores()[$b]));
+mode($t2, null); mode($t1, LIKE_BRAVO_MODE_BOTH);
+ok('like + bravo beats no rating: photo B', LIKE_BRAVO_MODE_BOTH, like_bravo_get_image_mode($b));
+ok('photo B: one like and one bravo count', array('likes'=>1,'bravos'=>1,'dormant'=>0), like_bravo_get_image_votes($b, LIKE_BRAVO_MODE_BOTH));
+mode($t1, null); mode($t4, null);
+ok('all back to stars: core scores of all ratings', core_scores(), scores());
+ok('stored ratings untouched', $sig, rates_sig());
 
 restore_snapshot();
 echo $fail ? "\n$fail FAILED\n" : "\nALL PASSED\n";

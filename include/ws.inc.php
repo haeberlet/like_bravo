@@ -167,7 +167,7 @@ function like_bravo_ws_get_voters($params, &$service)
 
   $mode = like_bravo_get_image_mode($image_id);
 
-  if (LIKE_BRAVO_MODE_INACTIVE == $mode)
+  if (!like_bravo_is_thumbs_mode($mode))
   {
     return new PwgError(403, 'Names are not available for this photo');
   }
@@ -179,7 +179,7 @@ function like_bravo_ws_get_voters($params, &$service)
 
 /**
  * Event handler: refuses the native method pwg.images.rate on photos in a
- * thumbs mode. Star photos are not affected.
+ * thumbs mode or without rating. Star photos are not affected.
  *
  * @param mixed $result
  * @param string $method_name
@@ -191,9 +191,9 @@ function like_bravo_ws_invoke_allowed($result, $method_name, $params)
   if ('pwg.images.rate' == $method_name
       and isset($params['image_id'])
       and is_numeric($params['image_id'])
-      and LIKE_BRAVO_MODE_INACTIVE != like_bravo_get_image_mode($params['image_id']))
+      and LIKE_BRAVO_MODE_STARS != like_bravo_get_image_mode($params['image_id']))
   {
-    return new PwgError(403, 'Star rating is disabled for this photo');
+    return new PwgError(403, 'Rating with stars is not available for this photo');
   }
 
   return $result;

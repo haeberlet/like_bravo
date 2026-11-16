@@ -30,7 +30,8 @@ function check($label, $expected, $actual)
   }
 }
 
-const INACTIVE = LIKE_BRAVO_MODE_INACTIVE;
+const STARS = LIKE_BRAVO_MODE_STARS;
+const OFF = LIKE_BRAVO_MODE_OFF;
 const LIKE = LIKE_BRAVO_MODE_LIKE;
 const BRAVO = LIKE_BRAVO_MODE_BOTH;
 
@@ -50,31 +51,52 @@ check('skips parents without a mode',
 check('root album with explicit mode',
   array('mode' => LIKE, 'source' => 1),
   like_bravo_resolve_mode('1', $explicit));
-check('nothing set anywhere is inactive',
-  array('mode' => INACTIVE, 'source' => null),
+check('nothing set anywhere is stars',
+  array('mode' => STARS, 'source' => null),
   like_bravo_resolve_mode('2,7', $explicit));
-check('explicit inactive stops inheritance',
-  array('mode' => INACTIVE, 'source' => 5),
-  like_bravo_resolve_mode('1,5,40', array(1 => BRAVO, 5 => INACTIVE)));
-check('child can re-enable below an inactive album',
+check('explicit stars stop inheritance',
+  array('mode' => STARS, 'source' => 5),
+  like_bravo_resolve_mode('1,5,40', array(1 => BRAVO, 5 => STARS)));
+check('child can re-enable below a stars album',
   array('mode' => LIKE, 'source' => 40),
-  like_bravo_resolve_mode('1,5,40', array(1 => BRAVO, 5 => INACTIVE, 40 => LIKE)));
+  like_bravo_resolve_mode('1,5,40', array(1 => BRAVO, 5 => STARS, 40 => LIKE)));
 check('modes read as strings from the database',
   array('mode' => BRAVO, 'source' => 12),
   like_bravo_resolve_mode('1,5,12', array('12' => '2')));
 check('empty uppercats',
-  array('mode' => INACTIVE, 'source' => null),
+  array('mode' => STARS, 'source' => null),
   like_bravo_resolve_mode('', $explicit));
 check('album id 10 does not match id 1',
-  array('mode' => INACTIVE, 'source' => null),
+  array('mode' => STARS, 'source' => null),
   like_bravo_resolve_mode('10', array(1 => LIKE)));
 
 // --- mode of a photo --------------------------------------------------------
-check('photo without album is inactive', INACTIVE, like_bravo_combine_modes(array()));
-check('single album', LIKE, like_bravo_combine_modes(array(LIKE)));
-check('highest mode wins', BRAVO, like_bravo_combine_modes(array(INACTIVE, BRAVO, LIKE)));
-check('like beats inactive', LIKE, like_bravo_combine_modes(array(INACTIVE, LIKE)));
-check('all inactive', INACTIVE, like_bravo_combine_modes(array(INACTIVE, INACTIVE)));
+// resolved modes: with a setting (source = album id) or the default (source null)
+function set_($mode) { return array('mode' => $mode, 'source' => 1); }
+$default = array('mode' => STARS, 'source' => null);
+
+check('photo without album is stars', STARS, like_bravo_combine_modes(array()));
+check('single album', LIKE, like_bravo_combine_modes(array(set_(LIKE))));
+check('like + bravo beats like and stars', BRAVO, like_bravo_combine_modes(array(set_(STARS), set_(BRAVO), set_(LIKE))));
+check('like beats stars', LIKE, like_bravo_combine_modes(array(set_(STARS), set_(LIKE))));
+check('like beats the default', LIKE, like_bravo_combine_modes(array($default, set_(LIKE))));
+check('only default albums: stars', STARS, like_bravo_combine_modes(array($default, $default)));
+check('single album without rating', OFF, like_bravo_combine_modes(array(set_(OFF))));
+check('no rating beats the default', OFF, like_bravo_combine_modes(array($default, set_(OFF))));
+check('no rating beats the default, any order', OFF, like_bravo_combine_modes(array(set_(OFF), $default)));
+check('explicit stars beat no rating', STARS, like_bravo_combine_modes(array(set_(OFF), set_(STARS))));
+check('like beats no rating', LIKE, like_bravo_combine_modes(array(set_(OFF), set_(LIKE))));
+check('like + bravo beats no rating', BRAVO, like_bravo_combine_modes(array(set_(BRAVO), set_(OFF), $default)));
+check('mode as string from the database', OFF, like_bravo_combine_modes(array($default, array('mode' => '3', 'source' => 4))));
+check('rank: default < off < stars < like < like + bravo',
+  array(0, 1, 2, 3, 4),
+  array_map('like_bravo_mode_rank', array($default, set_(OFF), set_(STARS), set_(LIKE), set_(BRAVO))));
+check('no rating is a valid mode', true, in_array(OFF, like_bravo_valid_modes(), true));
+check('thumbs modes', array(false, false, true, true),
+  array_map('like_bravo_is_thumbs_mode', array(STARS, OFF, LIKE, BRAVO)));
+check('no rating stops inheritance',
+  array('mode' => OFF, 'source' => 5),
+  like_bravo_resolve_mode('1,5,40', array(1 => BRAVO, 5 => OFF)));
 
 // --- how stored rates count -------------------------------------------------
 foreach (array(0, 1) as $rate)
@@ -90,7 +112,11 @@ foreach (array(2, 3, 4, 5) as $rate)
 {
   check("$rate is a like in like", 'like', like_bravo_classify_rate($rate, LIKE));
 }
-check('nothing counts in inactive', null, like_bravo_classify_rate(5, INACTIVE));
+check('nothing counts in stars', null, like_bravo_classify_rate(5, STARS));
+check('nothing counts without rating', null, like_bravo_classify_rate(4, OFF));
+check('counts without rating',
+  array('likes' => 0, 'bravos' => 0, 'dormant' => 3),
+  like_bravo_count_votes(array(2, 4, 5), OFF));
 check('rate as string from the database', 'bravo', like_bravo_classify_rate('5', BRAVO));
 
 check('counts in like + bravo',
@@ -130,7 +156,8 @@ for ($points = 1; $points <= 1000; $points++)
 check('score never decreases and stays below 5', true, $monotonic);
 
 // --- vote levels ------------------------------------------------------------
-check('levels in inactive', array(), like_bravo_allowed_levels(INACTIVE));
+check('levels in stars', array(), like_bravo_allowed_levels(STARS));
+check('levels without rating', array(), like_bravo_allowed_levels(OFF));
 check('levels in like', array('none', 'like'), like_bravo_allowed_levels(LIKE));
 check('levels in like + bravo', array('none', 'like', 'bravo'), like_bravo_allowed_levels(BRAVO));
 check('like is stored as 2', 2, like_bravo_level_to_rate('like'));
@@ -283,10 +310,23 @@ check('guest rates count on thumbs photos if guests take part',
 check('guest rates still count on star photos',
   5, like_bravo_compute_scores($guest_rows, array())[7]['count']);
 check('switching a photo to thumbs and back loses nothing',
-  $star_only, like_bravo_compute_scores($star_rows, array(1 => INACTIVE)));
+  $star_only, like_bravo_compute_scores($star_rows, array(1 => STARS)));
 check('no rates at all', array(), like_bravo_compute_scores(array(), array(1 => BRAVO)));
 check('a single rated thumbs photo is its own average',
   2.5, like_bravo_compute_scores(rows(9, array(2, 2, 2, 4)), array(9 => BRAVO))[9]['score']);
+
+// photo 20 without rating: star rates and likes / bravos are kept but count nowhere
+$off_rows = array_merge($star_rows, $thumbs_rows, rows(20, array(5, 5, 4, 2, 0)));
+$off_scores = like_bravo_compute_scores($off_rows, $thumbs_modes + array(20 => OFF));
+check('photo without rating has no score', false, isset($off_scores[20]));
+check('photo without rating does not move star scores',
+  array($star_only[1], $star_only[2]), array($off_scores[1], $off_scores[2]));
+check('photo without rating does not move thumbs scores',
+  array($mixed[3], $mixed[4], $mixed[5]), array($off_scores[3], $off_scores[4], $off_scores[5]));
+check('photo without rating: guest rates do not count either',
+  false, isset(like_bravo_compute_scores(rows(20, array(4), 1), array(20 => OFF), true)[20]));
+check('all photos without rating: no scores at all',
+  array(), like_bravo_compute_scores($star_rows, array(1 => OFF, 2 => OFF)));
 
 // --- names of voters --------------------------------------------------------
 check('names: default is members only', 'members', $defaults['show_names']);
@@ -368,10 +408,11 @@ check('list of four', 'a, b, c und d', like_bravo_join_list(array('a', 'b', 'c',
 
 // --- personal pages ---------------------------------------------------------
 check('pages: none without any thumbs album', array(), like_bravo_sections(array()));
-check('pages: none if every explicit mode is inactive', array(), like_bravo_sections(array(4 => INACTIVE)));
-check('pages: likes only with a like album', array('my_likes' => 'like'), like_bravo_sections(array(4 => LIKE, 5 => INACTIVE)));
+check('pages: none if every explicit mode is stars', array(), like_bravo_sections(array(4 => STARS)));
+check('pages: likes only with a like album', array('my_likes' => 'like'), like_bravo_sections(array(4 => LIKE, 5 => STARS)));
 check('pages: likes and bravos with a like + bravo album',
-  array('my_likes' => 'like', 'my_bravos' => 'bravo'), like_bravo_sections(array(4 => INACTIVE, 7 => BRAVO)));
+  array('my_likes' => 'like', 'my_bravos' => 'bravo'), like_bravo_sections(array(4 => STARS, 7 => BRAVO)));
+check('pages: none if every explicit mode is no rating', array(), like_bravo_sections(array(4 => OFF, 5 => STARS)));
 check('pages: modes read as strings from the database',
   array('my_likes' => 'like', 'my_bravos' => 'bravo'), like_bravo_sections(array('7' => '2')));
 
@@ -389,6 +430,10 @@ check('my likes: order kept, bravo in a like album is a like, no star photo, no 
 check('my bravos: a bravo is not on the like page', array(5), like_bravo_filter_voted($my_rates, $my_modes, 'bravo'));
 check('my likes: nothing without thumbs photos', array(), like_bravo_filter_voted($my_rates, array(), 'like'));
 check('my likes: no rates', array(), like_bravo_filter_voted(array(), $my_modes, 'like'));
+check('my likes and bravos: no photo without rating',
+  array(array(2), array()),
+  array(like_bravo_filter_voted($my_rates, array(1 => OFF, 2 => LIKE, 5 => OFF), 'like'),
+        like_bravo_filter_voted($my_rates, array(1 => OFF, 2 => LIKE, 5 => OFF), 'bravo')));
 
 echo ($checks - $failures) . '/' . $checks . " checks passed\n";
 exit($failures > 0 ? 1 : 0);

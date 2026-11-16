@@ -12,6 +12,7 @@ for administrators who want to know why a photo ranks where it does.
 * Its score is `5 × points / (points + average)`, where the average is the mean
   number of points of all rated like photos in the gallery.
 * Photos in albums with stars are rated exactly as Piwigo rates them.
+* Photos in albums without rating have no score; their ratings stay stored.
 
 ## What is stored
 
@@ -105,14 +106,21 @@ ratings are read, so switching back loses nothing.
 | 4 or 5 | bravo | like |
 
 Dormant ratings stay in the database but are not counted and not shown. Native
-star rating is refused on like photos, so no new dormant ratings appear.
+star rating is refused on like photos and on photos without rating, so no new
+dormant ratings appear.
 
 **From likes to stars.** Likes become ratings of 2, bravos ratings of 4, and
 Piwigo's formula applies again, dormant ratings included.
 
-**Photos in several albums.** A photo has one mode, the highest of all its
-albums: Like + Bravo before Like only before Inactive. It is the same wherever
-the photo is opened from.
+**To no rating.** Photos in an album without rating have no score, so they are
+left out of "Best rated", and their ratings, stars as well as likes, count in no
+average. All ratings stay stored; switching the album back counts them again.
+
+**Photos in several albums.** A photo has one mode, the one of its albums that
+allows the most rating: Like + Bravo before Like only before Piwigo stars before
+No rating. Albums without any setting, of their own or inherited, count least,
+so an album without rating wins against them. The mode is the same wherever the
+photo is opened from.
 
 ## Votes of guests
 

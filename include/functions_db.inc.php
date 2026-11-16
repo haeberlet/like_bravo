@@ -50,8 +50,9 @@ SELECT uppercats
 }
 
 /**
- * Mode of a photo: highest effective mode of all albums it belongs to,
- * whatever album or page it is displayed from.
+ * Mode of a photo from the effective modes of all albums it belongs to
+ * (rule in like_bravo_mode_rank()), whatever album or page it is displayed
+ * from.
  *
  * @param int $image_id
  * @return int
@@ -62,7 +63,7 @@ function like_bravo_get_image_mode($image_id)
 
   if (empty($explicit_modes))
   {
-    return LIKE_BRAVO_MODE_INACTIVE;
+    return LIKE_BRAVO_MODE_STARS;
   }
 
   $query = '
@@ -72,14 +73,13 @@ SELECT c.uppercats
   WHERE ic.image_id = '.(int)$image_id.'
 ;';
 
-  $modes = array();
+  $resolved_modes = array();
   foreach (query2array($query, null, 'uppercats') as $uppercats)
   {
-    $resolved = like_bravo_resolve_mode($uppercats, $explicit_modes);
-    $modes[] = $resolved['mode'];
+    $resolved_modes[] = like_bravo_resolve_mode($uppercats, $explicit_modes);
   }
 
-  return like_bravo_combine_modes($modes);
+  return like_bravo_combine_modes($resolved_modes);
 }
 
 /**
