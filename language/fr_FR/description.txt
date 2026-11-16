@@ -1,0 +1,1 @@
+Remplace la notation par étoiles par « J'aime » / « Bravo » dans les albums choisis, en s'appuyant sur le système de notation natif.

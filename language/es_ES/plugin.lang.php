@@ -1,0 +1,61 @@
+<?php
+
+$lang['Like'] = "Me gusta";
+$lang['Bravo'] = "Bravo";
+$lang['Member rating'] = "Valoración de los miembros";
+
+// album tab
+$lang['Member rating in this album'] = "Valoración de los miembros en este álbum";
+$lang['Inherited'] = "Heredado";
+$lang['Inactive (Piwigo stars)'] = "Inactivo (estrellas de Piwigo)";
+$lang['Like only'] = "Solo «Me gusta»";
+$lang['Like + Bravo'] = "«Me gusta» + Bravo";
+$lang['currently'] = "actualmente";
+$lang['from album'] = "del álbum";
+$lang['no parent album has a setting'] = "ningún álbum superior tiene un ajuste";
+$lang['The setting applies to this album and all its sub-albums, until a sub-album has its own setting.'] = "El ajuste se aplica a este álbum y a todos sus subálbumes, hasta que un subálbum tenga su propio ajuste.";
+$lang['Invalid mode'] = "Modo no válido";
+
+// settings
+$lang['Icons'] = "Iconos";
+$lang['Icon for "Like"'] = "Icono para «Me gusta»";
+$lang['Icon for "Bravo"'] = "Icono para «Bravo»";
+$lang['Icon for "Remove my vote"'] = "Icono para «Retirar mi voto»";
+$lang['no separate icon'] = "sin icono propio";
+$lang['A click on the active icon always removes the vote, with or without a separate icon.'] = "Un clic en el icono activo siempre retira el voto, con o sin icono propio.";
+$lang['Rating'] = "Valoración";
+$lang['Members may rate their own photos'] = "Los miembros pueden valorar sus propias fotos";
+$lang['Guests may like'] = "Los invitados pueden dar «Me gusta»";
+$lang['No effect at the moment: "Rating by guests" is switched off in the Piwigo configuration.'] = "Sin efecto por ahora: «Valoración de los visitantes» está desactivada en la configuración de Piwigo.";
+$lang['Piwigo tells guests apart by their network address only. Visitors of the same network (same first three parts of an IPv4 address, e.g. a club house or an office) share one vote. Whoever changes the address (VPN, mobile network) and deletes the cookie can vote again. With IPv6 every single address counts, and many connections change theirs regularly.'] = "Piwigo solo distingue a los invitados por su dirección de red. Los visitantes de una misma red (las mismas tres primeras partes de la dirección IPv4, por ejemplo la sede de un club o una oficina) comparten un único voto. Quien cambia de dirección (VPN, red móvil) y borra la cookie puede volver a votar. Con IPv6 cuenta cada dirección, y muchas conexiones cambian la suya con regularidad.";
+$lang['Names of voters'] = "Nombres de los votantes";
+$lang['Show the names of voters'] = "Mostrar los nombres de los votantes";
+$lang['to nobody'] = "a nadie";
+$lang['to signed-in members'] = "a los miembros identificados";
+$lang['to all visitors'] = "a todos los visitantes";
+$lang['Votes cast before this was switched on are shown with their names as well. Guests have no name, they appear as a number.'] = "Los votos emitidos antes de activar esta opción también se muestran con su nombre. Los invitados no tienen nombre, aparecen como un número.";
+$lang['Names in the short form'] = "Nombres en la forma breve";
+$lang['The short form appears when the mouse is over a counter, e.g. "Liked by Anna, Ben, Carl and 4 others". A click on the counter shows all names.'] = "La forma breve aparece al pasar el ratón por un contador, por ejemplo «Me gusta: Anna, Ben, Carl y 4 más». Un clic en el contador muestra todos los nombres.";
+
+// picture page
+$lang['%d like'] = "%d me gusta";
+$lang['%d likes'] = "%d me gusta";
+$lang['%d bravo'] = "%d bravo";
+$lang['%d bravos'] = "%d bravos";
+$lang['Remove my vote'] = "Retirar mi voto";
+$lang['Your vote could not be saved.'] = "No se pudo guardar tu voto.";
+
+// names of voters
+$lang['Liked by %s'] = "Me gusta: %s";
+$lang['Bravo from %s'] = "Bravo: %s";
+$lang['you (voter)'] = "tú";
+$lang['%s and %s'] = "%s y %s";
+$lang['%d other voter'] = "%d más";
+$lang['%d other voters'] = "%d más";
+$lang['%d guest voter'] = "%d invitado";
+$lang['%d guest voters'] = "%d invitados";
+$lang['+ %d other'] = "+ %d más";
+$lang['+ %d others'] = "+ %d más";
+$lang['+ %d guest'] = "+ %d invitado";
+$lang['+ %d guests'] = "+ %d invitados";
+$lang['The names could not be loaded.'] = "No se pudieron cargar los nombres.";

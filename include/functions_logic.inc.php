@@ -36,7 +36,7 @@ function like_bravo_valid_modes()
  */
 function like_bravo_vote_icon_names()
 {
-  return array('thumb', 'heart', 'smile', 'star', 'sparkle', 'trophy', 'medal');
+  return array('thumb', 'heart', 'smile', 'star', 'sparkle', 'clap', 'trophy', 'medal');
 }
 
 /**
@@ -62,8 +62,8 @@ function like_bravo_show_names_values()
 function like_bravo_default_conf()
 {
   return array(
-    'icon_like' => 'thumb',
-    'icon_bravo' => 'star',
+    'icon_like' => 'heart',
+    'icon_bravo' => 'trophy',
     'icon_undo' => 'none',
     'allow_own_photos' => true,
     'allow_guests' => false,

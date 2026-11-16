@@ -1,0 +1,1 @@
+Sustituye la valoración por estrellas por «Me gusta» / «Bravo» en los álbumes elegidos, sobre el sistema de valoración nativo.

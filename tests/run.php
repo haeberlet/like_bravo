@@ -146,9 +146,13 @@ check('a stored bravo reads back as bravo',
 $defaults = like_bravo_default_conf();
 check('missing configuration gives defaults', $defaults, like_bravo_normalize_conf(false));
 check('stored values are kept',
-  'heart', like_bravo_normalize_conf(array('icon_like' => 'heart'))['icon_like']);
+  'smile', like_bravo_normalize_conf(array('icon_like' => 'smile'))['icon_like']);
 check('missing keys are filled',
-  $defaults['icon_bravo'], like_bravo_normalize_conf(array('icon_like' => 'heart'))['icon_bravo']);
+  $defaults['icon_bravo'], like_bravo_normalize_conf(array('icon_like' => 'smile'))['icon_bravo']);
+check('default icons: heart for like, trophy for bravo',
+  array('heart', 'trophy'), array($defaults['icon_like'], $defaults['icon_bravo']));
+check('clapping hands can be chosen',
+  'clap', like_bravo_normalize_conf(array('icon_bravo' => 'clap'))['icon_bravo']);
 check('unknown keys are dropped',
   false, array_key_exists('foo', like_bravo_normalize_conf(array('foo' => 'bar'))));
 check('score constant of earlier versions is dropped',
@@ -162,9 +166,9 @@ check('unknown like icon falls back',
 check('undo icon is not a vote icon',
   $defaults['icon_bravo'], like_bravo_normalize_conf(array('icon_bravo' => 'ban'))['icon_bravo']);
 check('valid icons are kept',
-  array('heart', 'trophy', 'cross'),
+  array('smile', 'medal', 'cross'),
   array_values(array_intersect_key(
-    like_bravo_normalize_conf(array('icon_like' => 'heart', 'icon_bravo' => 'trophy', 'icon_undo' => 'cross')),
+    like_bravo_normalize_conf(array('icon_like' => 'smile', 'icon_bravo' => 'medal', 'icon_undo' => 'cross')),
     array('icon_like' => 1, 'icon_bravo' => 1, 'icon_undo' => 1))));
 check('label settings of earlier versions are dropped',
   false, isset(like_bravo_normalize_conf(array('label_bravo' => 'Super'))['label_bravo']));
