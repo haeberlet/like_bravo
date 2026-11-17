@@ -40,6 +40,13 @@ icon votes or takes the vote back, as on the photo page; the names of the voters
 are only on the photo page. The theme Modus, with its justified rows, shows them
 as a small badge in the corner of the photo.
 
+Signed-in members also find three icons in the toolbar of album pages, to filter
+the photos by their own votes: the photos they liked, those they gave a bravo, and
+all others. The icons can be combined, and the page shows the photos of every
+active group. No active icon, or all three, shows all photos. The filter stays on
+for the session, like the sort order, and also applies to "previous" and "next"
+on the photo page. Photos with stars or without rating count as "all others".
+
 The menu block "Explore" gets two personal pages for signed-in members: "My likes"
 and "My bravos", with the latest votes first.
 
@@ -142,12 +149,17 @@ switched, is in [docs/rating.md](docs/rating.md).
   the next change of an album setting.
 * The theme SmartPocket shows a fixed list of entries in its menu. "My likes" and
   "My bravos" are missing there; the pages themselves work. Its thumbnails have
-  no caption, so they show no likes and bravos.
+  no caption and no toolbar, so they show no likes and bravos and there is no
+  filter.
+* Without captions below the thumbnails there are no likes and bravos on them,
+  for example in Modus with square thumbnails, where the theme switches the
+  captions off. Votes are then given on the photo page.
 * The French, Spanish and Italian texts have not been reviewed by native
   speakers. Corrections are welcome.
 
 The photo page has been tested with the themes Bootstrap Darkroom, Modus, Elegant
-and SmartPocket.
+and SmartPocket. Thumbnails loaded later while scrolling, for example by the
+plugin RV Thumb Scroller, get their likes and bravos as well.
 
 ## License
 

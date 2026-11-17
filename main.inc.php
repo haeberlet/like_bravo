@@ -49,6 +49,10 @@ add_event_handler('blockmanager_apply', 'like_bravo_blockmanager_apply',
 add_event_handler('loc_end_section_init', 'like_bravo_section_init',
   EVENT_HANDLER_PRIORITY_NEUTRAL, LIKE_BRAVO_PATH . 'include/sections.inc.php');
 
+// album pages: filter by the member's own votes, after the personal pages are set up
+add_event_handler('loc_end_section_init', 'like_bravo_filter_section_init',
+  EVENT_HANDLER_PRIORITY_NEUTRAL + 10, LIKE_BRAVO_PATH . 'include/filter.inc.php');
+
 if (defined('IN_ADMIN'))
 {
   add_event_handler('tabsheet_before_select', 'like_bravo_tabsheet_before_select');

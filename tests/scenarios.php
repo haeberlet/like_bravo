@@ -409,6 +409,56 @@ ok('switched off: nothing added', $tn_in, like_bravo_index_thumbnails($tn_in, $t
 $conf['like_bravo'] = like_bravo_default_conf();
 mode($t1, null); mode($t4, null);
 
+echo "== 14. filter of album pages\n";
+include_once(LIKE_BRAVO_PATH.'include/filter.inc.php');
+$conf['like_bravo'] = like_bravo_default_conf();
+pwg_query('DELETE FROM '.RATE_TABLE);
+mode($t1, LIKE_BRAVO_MODE_BOTH); mode($t4, LIKE_BRAVO_MODE_OFF); // A and B like + bravo, C without rating
+vote($a, $me, 2); vote($b, $me, 5); vote($c, $me, 4); vote($a, $member['anna'], 5);
+visitor($me, '198.51.100.20');
+$_SESSION = array(); $script_name = $_SERVER['SCRIPT_NAME'];
+function filtered($script, $get, $items, $image_id = null) { // runs the filter on a page with these photos
+  global $page, $template;
+  $_SERVER['SCRIPT_NAME'] = '/'.$script.'.php'; $_GET = $get; $template->index_buttons = array();
+  $page = array('section' => 'categories', 'items' => $items, 'infos' => array());
+  if (null !== $image_id) $page['image_id'] = $image_id;
+  like_bravo_filter_section_init();
+  return $page['items']; }
+function filter_buttons() { global $template; $html = implode('', array_merge(array(), ...array_values($template->index_buttons)));
+  preg_match_all('#like-bravo-filter-(\w+)( is-active)?"#', $html, $m); $r = array();
+  foreach ($m[1] as $i => $g) $r[$g] = '' !== $m[2][$i]; return $r; }
+$all = array($a, $b, $c);
+ok('no filter: all photos, three icons in one group, none active', array($all, array('like'=>false, 'bravo'=>false, 'none'=>false)),
+  array(filtered('index', array(), $all), filter_buttons()));
+ok('one toolbar entry for the group', 1, count($template->index_buttons[BUTTONS_RANK_NEUTRAL]));
+ok('my likes', array($a), filtered('index', array('lb_filter' => 'like'), $all));
+ok('icon active, kept for the session', array(array('like'=>true, 'bravo'=>false, 'none'=>false), 'like'),
+  array(filter_buttons(), pwg_get_session_var('like_bravo_filter')));
+ok('next page without parameter: filter from the session', array($a), filtered('index', array(), $all));
+ok('likes or without my vote: a bravo is left out, the photo without rating stays', array($a, $c),
+  filtered('index', array('lb_filter' => 'none-like'), $all));
+ok('icon links switch one group each', array(1, 1, 1), array_map(function($p) use ($template) { return preg_match($p, implode('', $template->index_buttons[BUTTONS_RANK_NEUTRAL])); },
+  array('#lb_filter=none"[^>]*like-bravo-filter-like is-active#', '#lb_filter="[^>]*like-bravo-filter-bravo"#', '#lb_filter=like"[^>]*like-bravo-filter-none is-active#')));
+filtered('index', array('lb_filter' => 'bravo'), $all);
+ok('photo page: previous and next in the filter, shown photo kept', array($b, $c), filtered('picture', array(), $all, $c));
+ok('photo page: no parameter read there', 'bravo', (filtered('picture', array('lb_filter' => 'like'), $all, $b) and pwg_get_session_var('like_bravo_filter')));
+ok('empty result: message', array(array(), 1), array(filtered('index', array('lb_filter' => 'like'), array($c)), count($page['infos'])));
+ok('all three groups: no filter, session cleared', array($all, null), array(filtered('index', array('lb_filter' => 'like-bravo-none'), $all), pwg_get_session_var('like_bravo_filter')));
+ok('page without like photos and no filter: no icons', array(), (filtered('index', array(), array($c)) and false) ?: filter_buttons());
+filtered('index', array('lb_filter' => 'like'), $all);
+ok('personal pages are not filtered', $all, (function() use ($all) { global $page; $_SERVER['SCRIPT_NAME'] = '/index.php'; $_GET = array();
+  $page = array('section' => 'my_bravos', 'items' => $all); like_bravo_filter_section_init(); return $page['items']; })());
+visitor($guest, '203.0.113.7');
+ok('guests: no filter', $all, filtered('index', array(), $all));
+visitor($me, '198.51.100.20');
+mode($t1, LIKE_BRAVO_MODE_LIKE);
+filtered('index', array('lb_filter' => ''), $all);
+ok('no like + bravo album: no bravo icon', array('like'=>false, 'none'=>false), filter_buttons());
+mode($t1, null); mode($t4, null);
+ok('no album in a thumbs mode: nothing filtered, no icons', array($all, array()),
+  array(filtered('index', array('lb_filter' => 'like'), $all), filter_buttons()));
+$_SERVER['SCRIPT_NAME'] = $script_name; $_GET = array(); $_SESSION = array();
+
 restore_snapshot();
 echo $fail ? "\n$fail FAILED\n" : "\nALL PASSED\n";
 

@@ -254,8 +254,8 @@
 /* Modus with justified rows: badge in the top right corner of the photo,
    in the style of the theme's title strip */
 .like-bravo.like-bravo-thumb.like-bravo-badge {
+  /* no z-index: above the photo link by document order, below the menus */
   position: absolute;
-  z-index: 2;
   top: 4px;
   right: 4px;
   margin: 0;
@@ -264,4 +264,109 @@
   background-color: rgba(0, 0, 0, 0.5);
   color: #fff;
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+/* filter icons in the toolbar of album pages: one group in a common frame */
+.like-bravo-filters {
+  --like-bravo-like: #2e8fd8;
+  --like-bravo-bravo: #e8a200;
+  --like-bravo-none: #3cb371;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  /* as the buttons of Default, Elegant and Modus (pwg-button) */
+  vertical-align: top;
+}
+
+.like-bravo-filters-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  /* the frame is taller than the other toolbar entries; the negative margin
+     keeps the height of the entry, so the icons line up with the others */
+  margin: -4px 0;
+  padding: 1px 4px;
+  border: 1px solid rgba(128, 128, 128, 0.6);
+  border-radius: 16px;
+  line-height: 1;
+}
+
+.like-bravo-filters .like-bravo-filter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  opacity: 0.65;
+  text-decoration: none;
+  transition: opacity 0.15s, color 0.15s, background-color 0.15s;
+}
+
+/* color of the toolbar text, not of links: Modus colors links white there;
+   Bootstrap Darkroom colors its toolbar on nav-link, which the group has */
+.like-bravo-filters .like-bravo-filter,
+.like-bravo-filters .like-bravo-filter:hover,
+.like-bravo-filters .like-bravo-filter:focus {
+  color: inherit;
+}
+
+.like-bravo-filters .like-bravo-filter .like-bravo-icon {
+  display: block;
+}
+
+.like-bravo-filters .like-bravo-filter:hover,
+.like-bravo-filters .like-bravo-filter:focus-visible {
+  opacity: 1;
+  background-color: rgba(128, 128, 128, 0.18);
+}
+
+.like-bravo-filters .like-bravo-filter.is-active {
+  opacity: 1;
+  background-color: rgba(128, 128, 128, 0.3);
+}
+
+.like-bravo-filters .like-bravo-filter-like.is-active {
+  color: var(--like-bravo-like);
+}
+
+.like-bravo-filters .like-bravo-filter-bravo.is-active {
+  color: var(--like-bravo-bravo);
+}
+
+.like-bravo-filters .like-bravo-filter-none.is-active {
+  color: var(--like-bravo-none);
+}
+
+.like-bravo-filters .like-bravo-filter.is-active .like-bravo-icon {
+  fill: currentColor;
+  fill-opacity: 0.3;
+}
+
+/* title of the group: only in the collapsed menu of Bootstrap Darkroom, whose
+   class d-lg-none hides it on wide screens, and of Modus (pwg-button-text) */
+.navbar-nav .like-bravo-filters .like-bravo-filters-title {
+  display: inline;
+}
+
+/* narrow thumbnails (portrait photos in a row): the badge in two lines,
+   like above bravo. The thumbnail has a fixed width set by Modus, so it can
+   be the container the width is measured on. */
+.like-bravo-has-badge {
+  container-type: inline-size;
+}
+
+@container (max-width: 104px) {
+  .like-bravo.like-bravo-thumb.like-bravo-badge {
+    display: grid;
+    grid-template-columns: auto auto;
+    align-items: center;
+    padding: 2px 6px 2px 2px;
+    border-radius: 10px;
+  }
+
+  .like-bravo.like-bravo-thumb.like-bravo-badge .like-bravo-number {
+    margin-right: 0;
+  }
 }

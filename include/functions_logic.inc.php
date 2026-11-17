@@ -789,9 +789,10 @@ function like_bravo_thumbnails_prefilter($content)
 {
   $slot = '{if isset($thumbnail.LIKE_BRAVO)}{$thumbnail.LIKE_BRAVO}{/if}';
 
-  // only the block with the icon itself; Bootstrap Darkroom tests the same
-  // condition inside a class attribute, too
-  $pattern = '#\{if !empty\(\$thumbnail\.icon_ts\)\}\s*<img\b[^>]*>\s*\{/if\}#';
+  // only the block that shows the icon, as an element of any kind (Modus
+  // replaces the image by a symbol in a span); Bootstrap Darkroom tests the
+  // same condition inside a class attribute, which holds no element
+  $pattern = '#\{if !empty\(\$thumbnail\.icon_ts\)\}(?:(?!\{/?if\b)[^<])*<(?:(?!\{/?if\b).)*?\{/if\}#s';
   $content = preg_replace($pattern, '$0'.$slot, $content);
 
   if (false !== strpos($content, '{modus_thumbs}'))
@@ -804,4 +805,80 @@ function like_bravo_thumbnails_prefilter($content)
   }
 
   return $content;
+}
+
+/**
+ * @return string[] groups of the filter on album pages, in display order:
+ *    photos the member liked, gave a bravo, and all other photos
+ */
+function like_bravo_filter_values()
+{
+  return array('like', 'bravo', 'none');
+}
+
+/**
+ * Filter from the URL or the session, such as "like-none". All groups
+ * together show every photo, the same as no filter.
+ *
+ * @param mixed $value
+ * @return string[] active groups in display order, empty for no filter
+ */
+function like_bravo_parse_filter($value)
+{
+  $parts = is_string($value) ? explode('-', $value) : array();
+  $filter = array_values(array_intersect(like_bravo_filter_values(), $parts));
+
+  return count($filter) == count(like_bravo_filter_values()) ? array() : $filter;
+}
+
+/**
+ * The filter after a click on the icon of one group.
+ *
+ * @param string[] $filter as like_bravo_parse_filter()
+ * @param string $group
+ * @return string[] as like_bravo_parse_filter()
+ */
+function like_bravo_toggle_filter($filter, $group)
+{
+  $filter = in_array($group, $filter, true)
+    ? array_diff($filter, array($group))
+    : array_merge($filter, array($group));
+
+  return like_bravo_parse_filter(implode('-', $filter));
+}
+
+/**
+ * Photos of a page that pass the filter: those in at least one active
+ * group. A photo is in the group 'like' or 'bravo' if the member's own vote
+ * counts as that in the photo's mode; every other photo, star photos and
+ * photos without rating included, is in the group 'none'.
+ *
+ * @param int[] $items photos of the page, in display order
+ * @param array $image_modes image_id => mode
+ * @param array $own_rates image_id => the member's stored rate
+ * @param string[] $filter as like_bravo_parse_filter(), empty = all photos
+ * @param int|null $keep photo kept in any case (the one being shown)
+ * @return int[] order kept
+ */
+function like_bravo_filter_items($items, $image_modes, $own_rates, $filter, $keep=null)
+{
+  if (empty($filter))
+  {
+    return $items;
+  }
+
+  $kept = array();
+  foreach ($items as $id)
+  {
+    $mode = isset($image_modes[$id]) ? $image_modes[$id] : LIKE_BRAVO_MODE_STARS;
+    $level = isset($own_rates[$id]) ? like_bravo_classify_rate($own_rates[$id], $mode) : null;
+
+    if (in_array(null === $level ? 'none' : $level, $filter, true)
+        or (null !== $keep and (int)$id == (int)$keep))
+    {
+      $kept[] = $id;
+    }
+  }
+
+  return $kept;
 }

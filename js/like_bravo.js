@@ -253,6 +253,7 @@
         var display = items[k].firstElementChild;
         if (thumbnail && display) {
           display.classList.add('like-bravo-badge');
+          thumbnail.classList.add('like-bravo-has-badge');
           thumbnail.appendChild(display);
         }
       }
@@ -268,10 +269,45 @@
     }
   }
 
+  // thumbnails loaded later, e.g. by an infinite scroll plugin (RV Thumb
+  // Scroller): set up their displays as soon as they are in the page
+  var DISPLAYS = '.like-bravo-thumb, .like-bravo-pending';
+  var scheduled = false;
+
+  function watch() {
+    if (!window.MutationObserver) {
+      return;
+    }
+    new MutationObserver(function(records) {
+      if (scheduled) {
+        return;
+      }
+      for (var i = 0; i < records.length; i++) {
+        var nodes = records[i].addedNodes;
+        for (var j = 0; j < nodes.length; j++) {
+          var node = nodes[j];
+          if (node.nodeType === 1 && (node.matches(DISPLAYS) || node.querySelector(DISPLAYS))) {
+            scheduled = true;
+            window.setTimeout(function() {
+              scheduled = false;
+              init();
+            }, 0);
+            return;
+          }
+        }
+      }
+    }).observe(document.body, {childList: true, subtree: true});
+  }
+
+  function start() {
+    init();
+    watch();
+  }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', start);
   }
   else {
-    init();
+    start();
   }
 })();

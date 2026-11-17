@@ -487,12 +487,42 @@ check('prefilter: right after the new icon',
 check('prefilter: same condition in an attribute is left alone',
   '<a class="x{if !empty($thumbnail.icon_ts)} recent{/if}">n</a>'."\n".$icon.$slot,
   like_bravo_thumbnails_prefilter('<a class="x{if !empty($thumbnail.icon_ts)} recent{/if}">n</a>'."\n".$icon));
+check('prefilter: Modus symbol instead of the image',
+  '<div>{$thumbnail.NAME}{if !empty($thumbnail.icon_ts)}<span class=albSymbol title="{$thumbnail.icon_ts.TITLE}">*</span>{/if}'.$slot.'</div>',
+  like_bravo_thumbnails_prefilter('<div>{$thumbnail.NAME}{if !empty($thumbnail.icon_ts)}<span class=albSymbol title="{$thumbnail.icon_ts.TITLE}">*</span>{/if}</div>'));
+check('prefilter: attribute and icon block in one template, only the block',
+  1, substr_count(like_bravo_thumbnails_prefilter('<a class="{if !empty($thumbnail.icon_ts)} recent{/if}">n</a>'.$icon), $slot));
 check('prefilter: template without the new icon is left alone',
   '<li>{$thumbnail.NAME}</li>', like_bravo_thumbnails_prefilter('<li>{$thumbnail.NAME}</li>'));
 $modus = like_bravo_thumbnails_prefilter('{if $flow}{modus_thumbs}{else}'.$icon.'{/if}');
 check('prefilter Modus: hidden list after the justified rows',
   1, preg_match('#^\{if \$flow\}\{modus_thumbs\}<li class="like-bravo-pending" hidden[^>]*>\{foreach from=\$thumbnails item=thumbnail\}.*data-href="\{\$thumbnail\.URL\}"#', $modus));
 check('prefilter Modus: grid layout gets the slot too', 1, substr_count($modus, $icon.$slot));
+
+// --- filter of album pages --------------------------------------------------
+check('filter: groups in display order, unknown parts dropped', array('like', 'none'), like_bravo_parse_filter('none-x-like'));
+check('filter: empty value is no filter', array(), like_bravo_parse_filter(''));
+check('filter: all three groups are no filter', array(), like_bravo_parse_filter('bravo-none-like'));
+check('filter: not a string', array(), like_bravo_parse_filter(array('like')));
+check('filter toggle: switch on', array('like', 'none'), like_bravo_toggle_filter(array('none'), 'like'));
+check('filter toggle: switch off', array('none'), like_bravo_toggle_filter(array('like', 'none'), 'like'));
+check('filter toggle: third group switches the filter off', array(), like_bravo_toggle_filter(array('like', 'bravo'), 'none'));
+check('filter toggle: from all photos', array('bravo'), like_bravo_toggle_filter(array(), 'bravo'));
+
+// 1 liked, 2 bravo, 3 not voted, 4 star photo with a star rate, 5 no rating with an old rate,
+// 6 dormant rate, 7 bravo stored in a like album
+$f_items = array(7, 1, 2, 3, 4, 5, 6);
+$f_modes = array(1 => BRAVO, 2 => BRAVO, 3 => BRAVO, 4 => STARS, 5 => OFF, 6 => BRAVO, 7 => LIKE);
+$f_rates = array(1 => '2', 2 => '5', 4 => '4', 5 => '4', 6 => '1', 7 => '4');
+check('filter: none is all photos, order kept', $f_items, like_bravo_filter_items($f_items, $f_modes, $f_rates, array()));
+check('filter: my likes, a bravo in a like album is a like', array(7, 1), like_bravo_filter_items($f_items, $f_modes, $f_rates, array('like')));
+check('filter: my bravos', array(2), like_bravo_filter_items($f_items, $f_modes, $f_rates, array('bravo')));
+check('filter: likes or bravos', array(7, 1, 2), like_bravo_filter_items($f_items, $f_modes, $f_rates, array('like', 'bravo')));
+check('filter: without my vote, star photos and photos without rating included', array(3, 4, 5, 6),
+  like_bravo_filter_items($f_items, $f_modes, $f_rates, array('none')));
+check('filter: likes or without my vote', array(7, 1, 3, 4, 5, 6), like_bravo_filter_items($f_items, $f_modes, $f_rates, array('like', 'none')));
+check('filter: photo being shown is kept', array(2, 3), like_bravo_filter_items($f_items, $f_modes, $f_rates, array('bravo'), 3));
+check('filter: photos missing in the modes are star photos', array(8), like_bravo_filter_items(array(8), array(), array(8 => '5'), array('none')));
 
 echo ($checks - $failures) . '/' . $checks . " checks passed\n";
 exit($failures > 0 ? 1 : 0);

@@ -75,3 +75,8 @@ $lang['Below the photo is available in the theme Bootstrap Darkroom for now. Oth
 $lang['Album pages'] = 'Pagine degli album';
 $lang['Likes and bravos below the thumbnails'] = 'Like e bravo sotto le miniature';
 $lang['They appear next to the icon for new photos, so only where the theme shows a caption below the thumbnails. Modus with justified rows shows them as a badge on the photo. Not available in the theme SmartPocket.'] = 'Compaiono accanto all\'icona delle nuove foto, quindi solo dove il tema mostra una didascalia sotto le miniature. Modus con righe giustificate li mostra come badge sulla foto. Non disponibile nel tema SmartPocket.';
+$lang['Filter: photos I like'] = 'Filtro: foto che mi piacciono';
+$lang['Filter: photos I gave a bravo'] = 'Filtro: foto a cui ho dato un bravo';
+$lang['Filter: photos without my like or bravo'] = 'Filtro: foto senza il mio like né il mio bravo';
+$lang['No photos match the filter.'] = 'Nessuna foto corrisponde al filtro.';
+$lang['Filter'] = 'Filtro';
