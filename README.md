@@ -34,6 +34,12 @@ The widget takes its colours from the theme. This is the theme Modus:
 
 ![Photo page in the theme Modus](docs/screenshots/widget-modus.png)
 
+On album pages, the thumbnails of these photos show the same icons with the
+number of likes and bravos, next to the theme's icon for new photos. A click on an
+icon votes or takes the vote back, as on the photo page; the names of the voters
+are only on the photo page. The theme Modus, with its justified rows, shows them
+as a small badge in the corner of the photo.
+
 The menu block "Explore" gets two personal pages for signed-in members: "My likes"
 and "My bravos", with the latest votes first.
 
@@ -82,6 +88,9 @@ Under Plugins, "Like & Bravo" has a settings page:
   heading (default), or with the photo information. Below the photo works in the
   theme Bootstrap Darkroom for now; other themes always show the widget with the
   photo information.
+* **Likes and bravos below the thumbnails** (on by default). They need the
+  captions below the thumbnails, which Piwigo and some themes can switch off;
+  Modus with justified rows shows them as a badge on the photo instead.
 * **Members may rate their own photos** (on by default).
 * **Guests may like** (off by default). It needs Piwigo's own option "Rating by
   guests". Piwigo tells guests apart by their network address only, so guest votes
@@ -132,7 +141,8 @@ switched, is in [docs/rating.md](docs/rating.md).
   The score of such a photo follows with the next vote anywhere in the gallery or
   the next change of an album setting.
 * The theme SmartPocket shows a fixed list of entries in its menu. "My likes" and
-  "My bravos" are missing there; the pages themselves work.
+  "My bravos" are missing there; the pages themselves work. Its thumbnails have
+  no caption, so they show no likes and bravos.
 * The French, Spanish and Italian texts have not been reviewed by native
   speakers. Corrections are welcome.
 

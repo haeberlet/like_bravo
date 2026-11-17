@@ -72,3 +72,6 @@ $lang['Place of the widget'] = 'Platz des Widgets';
 $lang['below the photo, without heading'] = 'unter dem Foto, ohne Überschrift';
 $lang['with the photo information'] = 'bei den Bildinformationen';
 $lang['Below the photo is available in the theme Bootstrap Darkroom for now. Other themes show the widget with the photo information.'] = 'Unter dem Foto gibt es vorerst nur im Theme Bootstrap Darkroom. Andere Themes zeigen das Widget bei den Bildinformationen.';
+$lang['Album pages'] = 'Albumseiten';
+$lang['Likes and bravos below the thumbnails'] = 'Likes und Bravos unter den Vorschaubildern';
+$lang['They appear next to the icon for new photos, so only where the theme shows a caption below the thumbnails. Modus with justified rows shows them as a badge on the photo. Not available in the theme SmartPocket.'] = 'Sie erscheinen neben dem Symbol für neue Fotos, also nur dort, wo das Theme unter den Vorschaubildern eine Beschriftung zeigt. Modus mit Zeilen im Blocksatz zeigt sie als Abzeichen auf dem Foto. Im Theme SmartPocket nicht verfügbar.';

@@ -201,3 +201,67 @@
   flex-basis: 100%;
   font-size: 0.9em;
 }
+
+/* likes and bravos of a thumbnail: icon and number per level, in the line
+   of the "new" icon of the theme */
+.like-bravo.like-bravo-thumb {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 0 2px;
+  margin: 0 0 0 6px;
+  padding: 0;
+  font-size: 0.9em;
+  font-weight: normal;
+  line-height: 1;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.like-bravo.like-bravo-thumb .like-bravo-button,
+.like-bravo.like-bravo-thumb .like-bravo-symbol {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.like-bravo.like-bravo-thumb .like-bravo-symbol {
+  opacity: 0.65;
+}
+
+/* Default, Elegant and Modus give every span of a thumbnail its full width */
+.thumbnails .like-bravo.like-bravo-thumb,
+.thumbnails .like-bravo.like-bravo-thumb span {
+  width: auto;
+  max-width: none;
+}
+
+.like-bravo.like-bravo-thumb .like-bravo-number {
+  min-width: 1ch;
+  margin-right: 6px;
+}
+
+.like-bravo.like-bravo-thumb .like-bravo-number:last-child {
+  margin-right: 0;
+}
+
+.like-bravo.like-bravo-thumb.has-error {
+  outline: 1px solid #d9534f;
+  outline-offset: 2px;
+}
+
+/* Modus with justified rows: badge in the top right corner of the photo,
+   in the style of the theme's title strip */
+.like-bravo.like-bravo-thumb.like-bravo-badge {
+  position: absolute;
+  z-index: 2;
+  top: 4px;
+  right: 4px;
+  margin: 0;
+  padding: 0 6px 0 2px;
+  border-radius: 12px;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+}

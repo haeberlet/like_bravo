@@ -368,6 +368,47 @@ mode($t1, null); mode($t4, null);
 ok('all back to stars: core scores of all ratings', core_scores(), scores());
 ok('stored ratings untouched', $sig, rates_sig());
 
+echo "== 13. likes and bravos of the thumbnails\n";
+include_once(LIKE_BRAVO_PATH.'include/thumbnails.inc.php');
+$conf['like_bravo'] = like_bravo_default_conf();
+pwg_query('DELETE FROM '.RATE_TABLE);
+mode($t1, LIKE_BRAVO_MODE_BOTH); mode($t4, LIKE_BRAVO_MODE_OFF); // photo A like + bravo, C without rating
+vote($a, $member['anna'], 2); vote($a, $member['ben'], 4); vote($a, $me, 5); vote($a, $member['carl'], 1);
+vote($c, $member['anna'], 4);
+visitor($me, '198.51.100.20');
+$tn_in = array(array('id'=>$a, 'NAME'=>'A'), array('id'=>$c, 'NAME'=>'C'));
+$tn_pics = array(array('id'=>$a, 'added_by'=>$me), array('id'=>$c, 'added_by'=>$me));
+$tn = like_bravo_index_thumbnails($tn_in, $tn_pics);
+ok('only the like photo gets a display, not the photo without rating', array(true, false), array(isset($tn[0]['LIKE_BRAVO']), isset($tn[1]['LIKE_BRAVO'])));
+ok('other template variables kept', array('A', 'C'), array_column($tn, 'NAME'));
+$h = $tn[0]['LIKE_BRAVO'];
+ok('own bravo active, one like, two bravos, dormant vote left out', array(1, 1, 1, 1),
+  array(preg_match('#data-level="bravo"#', $h), preg_match('#like-bravo-count-likes"[^>]*>1<#', $h),
+        preg_match('#like-bravo-count-bravos"[^>]*>2<#', $h), preg_match('#class="like-bravo-button like-bravo-bravo is-active"#', $h)));
+ok('two buttons with a token, no names', array(2, 1, 0),
+  array(substr_count($h, '<button'), preg_match('#data-token="[0-9a-f]+"#', $h), substr_count($h, 'data-summary')));
+$conf['like_bravo']['allow_own_photos'] = false;
+$h = like_bravo_index_thumbnails($tn_in, $tn_pics)[0]['LIKE_BRAVO'];
+ok('own photo without own votes allowed: numbers only', array(0, 2, 'none'),
+  array(substr_count($h, '<button'), substr_count($h, 'like-bravo-symbol'), preg_match('#data-level="(\w+)"#', $h, $mm) ? $mm[1] : ''));
+$conf['like_bravo']['allow_own_photos'] = true;
+visitor($guest, '203.0.113.7');
+$h = like_bravo_index_thumbnails($tn_in, $tn_pics)[0]['LIKE_BRAVO'];
+ok('guest without guest votes: numbers only, no token', array(0, 0), array(substr_count($h, '<button'), substr_count($h, 'data-token')));
+$conf['like_bravo']['allow_guests'] = true;
+$h = like_bravo_index_thumbnails($tn_in, $tn_pics)[0]['LIKE_BRAVO'];
+ok('guest with guest votes: buttons', 2, substr_count($h, '<button'));
+$conf['like_bravo'] = like_bravo_default_conf();
+mode($t1, LIKE_BRAVO_MODE_LIKE);
+visitor($me, '198.51.100.20');
+$h = like_bravo_index_thumbnails($tn_in, $tn_pics)[0]['LIKE_BRAVO'];
+ok('like only: one button, bravo counts as like', array(1, 0, 1),
+  array(substr_count($h, '<button'), substr_count($h, 'like-bravo-count-bravos'), preg_match('#like-bravo-count-likes"[^>]*>3<#', $h)));
+$conf['like_bravo']['thumbnails'] = false;
+ok('switched off: nothing added', $tn_in, like_bravo_index_thumbnails($tn_in, $tn_pics));
+$conf['like_bravo'] = like_bravo_default_conf();
+mode($t1, null); mode($t4, null);
+
 restore_snapshot();
 echo $fail ? "\n$fail FAILED\n" : "\nALL PASSED\n";
 

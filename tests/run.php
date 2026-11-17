@@ -445,5 +445,54 @@ check('not below the photo in other themes',
   array(false, false, false, false),
   array_map(function($theme) { return like_bravo_widget_below_photo('photo', $theme); }, array('default', 'elegant', 'modus', 'smartpocket')));
 
+// --- likes and bravos of the thumbnails ------------------------------------
+check('thumbnails: shown by default', true, $defaults['thumbnails']);
+check('thumbnails: switched off is kept', false, like_bravo_normalize_conf(array('thumbnails' => '')) ['thumbnails']);
+
+function rate_row($id, $rate, $user, $anonymous='', $guest=false)
+{
+  return array('element_id' => (string)$id, 'rate' => (string)$rate, 'user_id' => (string)$user,
+    'anonymous_id' => $anonymous, 'is_guest' => $guest ? '1' : '0');
+}
+$thumb_rows = array(
+  rate_row(1, 2, 7), rate_row(1, 4, 8), rate_row(1, 5, 9), rate_row(1, 1, 10),
+  rate_row(2, 4, 7), rate_row(2, 2, 8),
+  rate_row(3, 4, 7),
+  rate_row(4, 2, 2, '10.0.0', true), rate_row(4, 4, 2, '10.0.1', true),
+  rate_row(9, 4, 7),
+  );
+$thumb_modes = array(1 => BRAVO, 2 => LIKE, 3 => STARS, 4 => BRAVO, 5 => OFF, 6 => LIKE);
+$thumb_votes = like_bravo_thumbnail_votes($thumb_rows, $thumb_modes, 7, null, false);
+check('thumbnails: only thumbs photos, also without votes', array(1, 2, 4, 6), array_keys($thumb_votes));
+check('thumbnails: counts and own like, dormant rate left out',
+  array('likes' => 1, 'bravos' => 2, 'level' => 'like'), $thumb_votes[1]);
+check('thumbnails: bravo in a like album is a like, own vote',
+  array('likes' => 2, 'bravos' => 0, 'level' => 'like'), $thumb_votes[2]);
+check('thumbnails: guest votes do not count without guests',
+  array('likes' => 0, 'bravos' => 0, 'level' => 'none'), $thumb_votes[4]);
+check('thumbnails: photo without votes',
+  array('likes' => 0, 'bravos' => 0, 'level' => 'none'), $thumb_votes[6]);
+check('thumbnails: no own vote for a visitor who cannot vote',
+  'none', like_bravo_thumbnail_votes($thumb_rows, $thumb_modes, null, null, false)[1]['level']);
+$guest_votes = like_bravo_thumbnail_votes($thumb_rows, $thumb_modes, 2, '10.0.1', true);
+check('thumbnails: guests counted, own vote by address',
+  array('likes' => 1, 'bravos' => 1, 'level' => 'bravo'), $guest_votes[4]);
+check('thumbnails: nothing without thumbs photos', array(), like_bravo_thumbnail_votes($thumb_rows, array(3 => STARS), 7, null, false));
+
+$slot = '{if isset($thumbnail.LIKE_BRAVO)}{$thumbnail.LIKE_BRAVO}{/if}';
+$icon = "{if !empty(\$thumbnail.icon_ts)}\n<img src=\"recent.png\">\n{/if}";
+check('prefilter: right after the new icon',
+  "<a>{\$thumbnail.NAME}</a>\n".$icon.$slot."\n{if isset(\$thumbnail.NB_HITS)}x{/if}",
+  like_bravo_thumbnails_prefilter("<a>{\$thumbnail.NAME}</a>\n".$icon."\n{if isset(\$thumbnail.NB_HITS)}x{/if}"));
+check('prefilter: same condition in an attribute is left alone',
+  '<a class="x{if !empty($thumbnail.icon_ts)} recent{/if}">n</a>'."\n".$icon.$slot,
+  like_bravo_thumbnails_prefilter('<a class="x{if !empty($thumbnail.icon_ts)} recent{/if}">n</a>'."\n".$icon));
+check('prefilter: template without the new icon is left alone',
+  '<li>{$thumbnail.NAME}</li>', like_bravo_thumbnails_prefilter('<li>{$thumbnail.NAME}</li>'));
+$modus = like_bravo_thumbnails_prefilter('{if $flow}{modus_thumbs}{else}'.$icon.'{/if}');
+check('prefilter Modus: hidden list after the justified rows',
+  1, preg_match('#^\{if \$flow\}\{modus_thumbs\}<li class="like-bravo-pending" hidden[^>]*>\{foreach from=\$thumbnails item=thumbnail\}.*data-href="\{\$thumbnail\.URL\}"#', $modus));
+check('prefilter Modus: grid layout gets the slot too', 1, substr_count($modus, $icon.$slot));
+
 echo ($checks - $failures) . '/' . $checks . " checks passed\n";
 exit($failures > 0 ? 1 : 0);

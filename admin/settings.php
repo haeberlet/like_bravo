@@ -19,6 +19,7 @@ if (isset($_POST['submit']))
   }
   $posted['allow_own_photos'] = isset($_POST['allow_own_photos']);
   $posted['allow_guests'] = isset($_POST['allow_guests']);
+  $posted['thumbnails'] = isset($_POST['thumbnails']);
 
   $old = $conf['like_bravo'];
   conf_update_param('like_bravo', like_bravo_normalize_conf($posted), true);

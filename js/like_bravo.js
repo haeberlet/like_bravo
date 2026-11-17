@@ -1,11 +1,11 @@
 /* Like & Bravo: sets, changes and removes the vote of the current visitor
-   and shows the names of the voters. */
+   and shows the names of the voters. Serves the widget of the photo page
+   and the small displays of the thumbnails alike. */
 (function() {
   'use strict';
 
-  function init() {
-    var widget = document.getElementById('likeBravo');
-    if (!widget || widget.getAttribute('data-ready')) {
+  function setup(widget) {
+    if (widget.getAttribute('data-ready')) {
       return;
     }
     widget.setAttribute('data-ready', '1');
@@ -52,10 +52,32 @@
       if (!counter) {
         return;
       }
+      // thumbnails show the bare number, the text as tooltip
+      if (counter.classList.contains('like-bravo-number')) {
+        counter.textContent = count;
+        counter.title = text(count, one, many);
+        return;
+      }
       counter.textContent = text(count, one, many);
       if (counter.hasAttribute('data-summary')) {
         counter.setAttribute('data-summary', summary || '');
         counter.disabled = count === 0;
+      }
+    }
+
+    // the widget has a line for messages, a thumbnail only its tooltip
+    function showError(failed) {
+      if (message) {
+        message.textContent = failed ? widget.getAttribute('data-str-error') : '';
+      }
+      else {
+        widget.classList.toggle('has-error', failed);
+        if (failed) {
+          widget.title = widget.getAttribute('data-str-error');
+        }
+        else {
+          widget.removeAttribute('title');
+        }
       }
     }
 
@@ -95,7 +117,7 @@
       }
       saving = true;
       widget.classList.add('is-saving');
-      message.textContent = '';
+      showError(false);
 
       post(widget.getAttribute('data-url'), {
         image_id: widget.getAttribute('data-image-id'),
@@ -104,7 +126,7 @@
       })
         .then(render)
         .catch(function() {
-          message.textContent = widget.getAttribute('data-str-error');
+          showError(true);
         })
         .then(function() {
           saving = false;
@@ -190,6 +212,8 @@
         return;
       }
       event.preventDefault();
+      // the thumbnail around the display must not open the photo
+      event.stopPropagation();
 
       var level = button.getAttribute('data-level');
       // a click on the active icon removes the vote
@@ -210,6 +234,37 @@
           closeNames();
         }
       });
+    }
+  }
+
+  // Modus with justified rows builds its thumbnails without the template:
+  // the displays wait in a hidden list and go into their thumbnail here
+  function placePending() {
+    var lists = document.querySelectorAll('.like-bravo-pending');
+    for (var i = 0; i < lists.length; i++) {
+      var items = lists[i].querySelectorAll('[data-href]');
+      var links = lists[i].parentNode.querySelectorAll('li > a[href]');
+      var byHref = {};
+      for (var j = 0; j < links.length; j++) {
+        byHref[links[j].getAttribute('href')] = links[j].parentNode;
+      }
+      for (var k = 0; k < items.length; k++) {
+        var thumbnail = byHref[items[k].getAttribute('data-href')];
+        var display = items[k].firstElementChild;
+        if (thumbnail && display) {
+          display.classList.add('like-bravo-badge');
+          thumbnail.appendChild(display);
+        }
+      }
+      lists[i].parentNode.removeChild(lists[i]);
+    }
+  }
+
+  function init() {
+    placePending();
+    var widgets = document.querySelectorAll('#likeBravo, .like-bravo-thumb');
+    for (var i = 0; i < widgets.length; i++) {
+      setup(widgets[i]);
     }
   }
 

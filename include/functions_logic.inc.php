@@ -112,6 +112,7 @@ function like_bravo_default_conf()
     'show_names' => 'members',  // who sees the names of voters, see like_bravo_show_names_values()
     'names_limit' => 3,         // names in the short form
     'position' => 'photo',      // place of the widget, see like_bravo_position_values()
+    'thumbnails' => true,       // likes and bravos below the thumbnails
     );
 }
 
@@ -147,6 +148,7 @@ function like_bravo_normalize_conf($stored)
 
   $conf['allow_own_photos'] = (bool)$conf['allow_own_photos'];
   $conf['allow_guests'] = (bool)$conf['allow_guests'];
+  $conf['thumbnails'] = (bool)$conf['thumbnails'];
 
   if (!in_array($conf['show_names'], like_bravo_show_names_values(), true))
   {
@@ -710,4 +712,96 @@ function like_bravo_filter_voted($rows, $image_modes, $level)
   }
 
   return $ids;
+}
+
+/**
+ * Likes, bravos and the own vote of several photos at once, for the
+ * thumbnails of a page.
+ *
+ * @param array $rows rates of the photos: 'element_id', 'rate', 'user_id',
+ *    'anonymous_id', 'is_guest'
+ * @param array $image_modes image_id => mode of every photo to count;
+ *    photos missing here or not in a thumbs mode are left out
+ * @param int|null $own_user_id user id of the visitor, null if he cannot vote
+ * @param string|null $own_anonymous_id for an anonymous visitor: only the
+ *    rate stored with this identifier is his own
+ * @param bool $count_guests as like_bravo_guests_take_part()
+ * @return array image_id => array('likes' => int, 'bravos' => int,
+ *    'level' => 'none', 'like' or 'bravo')
+ */
+function like_bravo_thumbnail_votes($rows, $image_modes, $own_user_id, $own_anonymous_id, $count_guests)
+{
+  $votes = array();
+
+  foreach ($image_modes as $id => $mode)
+  {
+    if (like_bravo_is_thumbs_mode($mode))
+    {
+      $votes[(int)$id] = array('likes' => 0, 'bravos' => 0, 'level' => 'none');
+    }
+  }
+
+  foreach ($rows as $row)
+  {
+    $id = (int)$row['element_id'];
+    if (!isset($votes[$id]))
+    {
+      continue;
+    }
+
+    $level = like_bravo_classify_rate($row['rate'], $image_modes[$id]);
+    if (null === $level)
+    {
+      continue;
+    }
+
+    $own = (null !== $own_user_id and (int)$row['user_id'] == (int)$own_user_id
+      and (null === $own_anonymous_id or (string)$row['anonymous_id'] === (string)$own_anonymous_id));
+    if ($own)
+    {
+      $votes[$id]['level'] = $level;
+    }
+
+    if (!empty($row['is_guest']) and !$count_guests)
+    {
+      continue;
+    }
+    $votes[$id]['like' == $level ? 'likes' : 'bravos']++;
+  }
+
+  return $votes;
+}
+
+/**
+ * Template prefilter for the thumbnails of every theme built on Piwigo's
+ * thumbnail template: puts the likes and bravos of a photo right after its
+ * "new" icon, so they sit where the theme shows that icon. Templates
+ * without that icon are left alone.
+ *
+ * Modus with justified rows does not use the template for its thumbnails;
+ * for it, the votes are written into a hidden list right after the
+ * thumbnails, and js/like_bravo.js moves each into its thumbnail.
+ *
+ * @param string $content template source
+ * @return string
+ */
+function like_bravo_thumbnails_prefilter($content)
+{
+  $slot = '{if isset($thumbnail.LIKE_BRAVO)}{$thumbnail.LIKE_BRAVO}{/if}';
+
+  // only the block with the icon itself; Bootstrap Darkroom tests the same
+  // condition inside a class attribute, too
+  $pattern = '#\{if !empty\(\$thumbnail\.icon_ts\)\}\s*<img\b[^>]*>\s*\{/if\}#';
+  $content = preg_replace($pattern, '$0'.$slot, $content);
+
+  if (false !== strpos($content, '{modus_thumbs}'))
+  {
+    $list = '<li class="like-bravo-pending" hidden style="display:none">'
+      .'{foreach from=$thumbnails item=thumbnail}{if isset($thumbnail.LIKE_BRAVO)}'
+      .'<span data-href="{$thumbnail.URL}">{$thumbnail.LIKE_BRAVO}</span>'
+      .'{/if}{/foreach}</li>';
+    $content = str_replace('{modus_thumbs}', '{modus_thumbs}'.$list, $content);
+  }
+
+  return $content;
 }

@@ -39,6 +39,10 @@ add_event_handler('loc_begin_picture', 'like_bravo_block_native_rate',
 add_event_handler('loc_end_picture', 'like_bravo_picture',
   EVENT_HANDLER_PRIORITY_NEUTRAL, LIKE_BRAVO_PATH . 'include/picture.inc.php');
 
+// album pages: likes and bravos below the thumbnails
+add_event_handler('loc_end_index_thumbnails', 'like_bravo_index_thumbnails',
+  EVENT_HANDLER_PRIORITY_NEUTRAL, LIKE_BRAVO_PATH . 'include/thumbnails.inc.php');
+
 // personal pages "My likes" and "My bravos" in the menu block "Explore"
 add_event_handler('blockmanager_apply', 'like_bravo_blockmanager_apply',
   EVENT_HANDLER_PRIORITY_NEUTRAL, LIKE_BRAVO_PATH . 'include/sections.inc.php');

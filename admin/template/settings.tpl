@@ -63,6 +63,20 @@
   </fieldset>
 
   <fieldset class="no-border">
+    <legend>{'Album pages'|translate}</legend>
+    <ul>
+      <li>
+        <label class="font-checkbox">
+          <span class="icon-check"></span>
+          <input type="checkbox" name="thumbnails"{if $like_bravo.thumbnails} checked="checked"{/if}>
+          {'Likes and bravos below the thumbnails'|translate}
+        </label>
+        <span class="like-bravo-hint like-bravo-hint-block">{'They appear next to the icon for new photos, so only where the theme shows a caption below the thumbnails. Modus with justified rows shows them as a badge on the photo. Not available in the theme SmartPocket.'|translate}</span>
+      </li>
+    </ul>
+  </fieldset>
+
+  <fieldset class="no-border">
     <legend>{'Rating'|translate}</legend>
     <ul>
       <li>

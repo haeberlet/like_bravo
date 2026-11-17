@@ -83,6 +83,44 @@ SELECT c.uppercats
 }
 
 /**
+ * Modes of several photos at once, as like_bravo_get_image_mode().
+ *
+ * @param int[] $image_ids
+ * @return array image_id => mode for every given photo
+ */
+function like_bravo_get_image_modes($image_ids)
+{
+  $image_ids = array_unique(array_map('intval', $image_ids));
+  $modes = array_fill_keys($image_ids, LIKE_BRAVO_MODE_STARS);
+  $explicit_modes = like_bravo_get_explicit_modes();
+
+  if (empty($image_ids) or empty($explicit_modes))
+  {
+    return $modes;
+  }
+
+  $query = '
+SELECT ic.image_id, c.uppercats
+  FROM '.IMAGE_CATEGORY_TABLE.' AS ic
+    INNER JOIN '.CATEGORIES_TABLE.' AS c ON c.id = ic.category_id
+  WHERE ic.image_id IN ('.implode(',', $image_ids).')
+;';
+
+  $resolved_modes = array();
+  foreach (query2array($query) as $row)
+  {
+    $resolved_modes[(int)$row['image_id']][] = like_bravo_resolve_mode($row['uppercats'], $explicit_modes);
+  }
+
+  foreach ($resolved_modes as $image_id => $resolved)
+  {
+    $modes[$image_id] = like_bravo_combine_modes($resolved);
+  }
+
+  return $modes;
+}
+
+/**
  * Mode an album would inherit, i.e. its effective mode if it had no
  * explicit mode of its own.
  *
