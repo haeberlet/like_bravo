@@ -73,8 +73,8 @@ SELECT r.element_id, r.rate, r.user_id, r.anonymous_id,
     'url' => get_root_url().'ws.php?format=json&method=likeBravo.setVote',
     'token' => $can_vote ? get_pwg_token() : '',
     'icons' => array(
-      'like' => like_bravo_icon($settings['icon_like'], 16),
-      'bravo' => like_bravo_icon($settings['icon_bravo'], 16),
+      'like' => like_bravo_icon($settings['icon_like'], 14),
+      'bravo' => like_bravo_icon($settings['icon_bravo'], 14),
       ),
     );
 
@@ -129,7 +129,9 @@ function like_bravo_thumbnail_html($image_id, $mode, $votes, $can_vote, $common)
 
   $level = $can_vote ? $votes['level'] : 'none';
 
-  $html = '<span class="like-bravo like-bravo-thumb" data-image-id="'.(int)$image_id.'"'
+  // text-muted: the color of the comment line in Bootstrap Darkroom, which
+  // follows the chosen skin; no other theme defines the class
+  $html = '<span class="like-bravo like-bravo-thumb text-muted" data-image-id="'.(int)$image_id.'"'
     .' data-level="'.$level.'"';
   if ($can_vote)
   {

@@ -226,8 +226,16 @@
   height: 24px;
 }
 
+/* in the color of the caption, as the theme's comment count; the icon is
+   smaller than the button, which keeps its size for an easy click */
+.like-bravo.like-bravo-thumb .like-bravo-button,
 .like-bravo.like-bravo-thumb .like-bravo-symbol {
-  opacity: 0.65;
+  opacity: 1;
+}
+
+/* Bootstrap Darkroom: text size of the comment line below the title */
+.card-thumbnail .like-bravo.like-bravo-thumb {
+  font-size: 0.8rem;
 }
 
 /* Default, Elegant and Modus give every span of a thumbnail its full width */
