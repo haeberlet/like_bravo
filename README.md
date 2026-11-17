@@ -40,12 +40,30 @@ icon votes or takes the vote back, as on the photo page; the names of the voters
 are only on the photo page. The theme Modus, with its justified rows, shows them
 as a small badge in the corner of the photo.
 
+In Bootstrap Darkroom the icons sit in the caption, next to the star that marks
+new photos:
+
+![Album page in the theme Bootstrap Darkroom: likes and bravos below each thumbnail](docs/screenshots/album-bootstrap-darkroom.png)
+
+In Modus they are a badge in the top right corner of each photo:
+
+![Album page in the theme Modus: likes and bravos as a badge on each thumbnail](docs/screenshots/album-modus.png)
+
 Signed-in members also find three icons in the toolbar of album pages, to filter
 the photos by their own votes: the photos they liked, those they gave a bravo, and
 all others. The icons can be combined, and the page shows the photos of every
 active group. No active icon, or all three, shows all photos. The filter stays on
 for the session, like the sort order, and also applies to "previous" and "next"
 on the photo page. Photos with stars or without rating count as "all others".
+
+The three icons share a frame, so they read as one group among the theme's own
+buttons. Active icons are filled in their colour on a grey background. Here the
+filter shows the photos liked or given a bravo, without "all others":
+
+![Toolbar of an album page with the filter group: like and bravo active, "all others" inactive](docs/screenshots/toolbar.png)
+
+In the collapsed menu of narrow windows, the group sits on one line headed
+"Filter". Hovering over an icon shows what it filters.
 
 The menu block "Explore" gets two personal pages for signed-in members: "My likes"
 and "My bravos", with the latest votes first.
