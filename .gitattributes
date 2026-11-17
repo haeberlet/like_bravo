@@ -1,6 +1,6 @@
-# Not part of the release archive (git archive, see build.sh)
+# Not part of the release archive (git archive, see tools/build.sh)
 /tests          export-ignore
-/build.sh       export-ignore
 /.gitignore     export-ignore
 /.gitattributes export-ignore
 /docs/screenshots export-ignore
+/tools          export-ignore

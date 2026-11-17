@@ -4,11 +4,11 @@
 # It unpacks into a folder "like_bravo" (the plugin id) and holds the last
 # commit without the development files listed in .gitattributes.
 #
-#   ./build.sh
+#   tools/build.sh
 #
 set -euo pipefail
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 
 plugin_id="like_bravo"
 version="$(sed -n 's/^Version:[[:space:]]*//p' main.inc.php | head -n 1)"
@@ -34,7 +34,7 @@ if echo "$content" | grep -qvE "^${plugin_id}/"; then
   echo "Archive holds files outside ${plugin_id}/" >&2
   exit 1
 fi
-if echo "$content" | grep -qE "^${plugin_id}/(CLAUDE\.md|KONZEPT\.md|tests/|build\.sh|\.git)"; then
+if echo "$content" | grep -qE "^${plugin_id}/(CLAUDE\.md|KONZEPT\.md|tests/|tools/|\.git)"; then
   echo "Archive holds development files" >&2
   exit 1
 fi
