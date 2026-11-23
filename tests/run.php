@@ -546,5 +546,33 @@ check('edited comment: refused by the core, validation stays older', false, like
 check('edited comment: waiting for a moderator', false, like_bravo_comment_is_edited('2026-11-23 10:00:00', null));
 check('edited comment: never edited', false, like_bravo_comment_is_edited(null, '2026-11-20 09:00:00'));
 
+// --- feedback: read or unread, who is named ---------------------------------
+check('read before: "mark all as read" wins', '2026-11-25 08:00:00',
+  like_bravo_feedback_read_before('2026-11-25 08:00:00', '2026-11-30 00:00:00', '2026-11-23 22:00:00'));
+check('read before: without it, the later of registration and start of feedback', '2026-11-23 22:00:00',
+  like_bravo_feedback_read_before(null, '2025-03-01 10:00:00', '2026-11-23 22:00:00'));
+check('read before: a member registered after the start', '2026-12-01 09:00:00',
+  like_bravo_feedback_read_before(null, '2026-12-01 09:00:00', '2026-11-23 22:00:00'));
+check('read before: nothing known', '', like_bravo_feedback_read_before(null, null, null));
+
+check('read: older than "mark all as read"', true, like_bravo_feedback_is_read('2026-11-24 10:00:00', '2026-11-25 08:00:00', null));
+check('read: in the same second as "mark all as read"', true, like_bravo_feedback_is_read('2026-11-25 08:00:00', '2026-11-25 08:00:00', null));
+check('unread: newer, not read on its own', false, like_bravo_feedback_is_read('2026-11-26 10:00:00', '2026-11-25 08:00:00', null));
+check('read: read on its own after it came', true, like_bravo_feedback_is_read('2026-11-26 10:00:00', '2026-11-25 08:00:00', '2026-11-26 11:00:00'));
+check('unread again: changed after it was read', false, like_bravo_feedback_is_read('2026-11-27 09:00:00', '2026-11-25 08:00:00', '2026-11-26 11:00:00'));
+check('unread: nothing known, not read', false, like_bravo_feedback_is_read('2026-11-26 10:00:00', '', null));
+
+check('excerpt: short text as it is', 'Schönes Licht!', like_bravo_excerpt('  Schönes   Licht! '));
+check('excerpt: one line, no tags', 'Schönes Licht und tolle Farben', like_bravo_excerpt("Schönes <b>Licht</b>\nund tolle Farben"));
+check('excerpt: cut at a word boundary', 'Das Licht im Hintergrund ist wunderbar und die Farben…',
+  like_bravo_excerpt('Das Licht im Hintergrund ist wunderbar und die Farben leuchten richtig schön warm.'));
+check('excerpt: multibyte characters are not split', 'ÄÖÜäöüß…', like_bravo_excerpt('ÄÖÜäöüßÄÖÜäöüß', 7));
+
+check('who: a member with name', array('who' => 'member', 'name' => 'Alice'), like_bravo_feedback_who(false, 'Alice', true));
+check('who: a guest', array('who' => 'guest', 'name' => null), like_bravo_feedback_who(true, 'guest', true));
+check('who: a member whose account is gone', array('who' => 'former', 'name' => null), like_bravo_feedback_who(false, null, true));
+check('who: names hidden by "Names of voters"', array('who' => 'hidden', 'name' => null), like_bravo_feedback_who(false, 'Alice', false));
+check('who: names hidden, also for guests', array('who' => 'hidden', 'name' => null), like_bravo_feedback_who(true, null, false));
+
 echo ($checks - $failures) . '/' . $checks . " checks passed\n";
 exit($failures > 0 ? 1 : 0);

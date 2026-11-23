@@ -948,3 +948,101 @@ function like_bravo_comment_is_edited($edited_at, $validation_date)
 
   return strcmp($validation_date, $edited_at) >= 0;
 }
+
+/**
+ * Time up to which all feedback of a member counts as read: his "mark all
+ * as read", or else when feedback started for him, which is when he
+ * registered or when the plugin started its feedback, the later of both.
+ *
+ * @param string|null $read_all_before stored by "mark all as read"
+ * @param string|null $registration_date of the member
+ * @param string|null $feedback_since when the plugin started its feedback
+ * @return string 'Y-m-d H:i:s', '' if nothing is known
+ */
+function like_bravo_feedback_read_before($read_all_before, $registration_date, $feedback_since)
+{
+  if (!empty($read_all_before))
+  {
+    return (string)$read_all_before;
+  }
+
+  return (string)max((string)$registration_date, (string)$feedback_since);
+}
+
+/**
+ * Whether an entry of the feedback is read: it is not newer than "mark all
+ * as read", or it was read on its own after it last changed. A changed vote
+ * or an edited comment gets a new time and is unread again.
+ *
+ * Times have whole seconds: a vote in the very second of "mark all as read"
+ * counts as read.
+ *
+ * @param string $time of the entry, 'Y-m-d H:i:s'
+ * @param string $read_before as like_bravo_feedback_read_before()
+ * @param string|null $read_at when the entry was read on its own
+ * @return bool
+ */
+function like_bravo_feedback_is_read($time, $read_before, $read_at)
+{
+  if ('' !== (string)$read_before and strcmp((string)$time, (string)$read_before) <= 0)
+  {
+    return true;
+  }
+
+  return !empty($read_at) and strcmp((string)$read_at, (string)$time) >= 0;
+}
+
+/**
+ * Beginning of a comment as plain text on one line, cut after about
+ * $length characters at a word boundary.
+ *
+ * @param string $content
+ * @param int $length
+ * @return string
+ */
+function like_bravo_excerpt($content, $length=60)
+{
+  $text = trim(preg_replace('/\s+/u', ' ', strip_tags((string)$content)));
+
+  if (mb_strlen($text, 'UTF-8') <= $length)
+  {
+    return $text;
+  }
+
+  $cut = mb_substr($text, 0, $length, 'UTF-8');
+  $space = mb_strrpos($cut, ' ', 0, 'UTF-8');
+  if (false !== $space and $space > $length / 2)
+  {
+    $cut = mb_substr($cut, 0, $space, 'UTF-8');
+  }
+
+  return rtrim($cut, " ,.;:-").'…';
+}
+
+/**
+ * Who an entry of the feedback names.
+ *
+ * @param bool $is_guest guest or "generic" account
+ * @param string|null $name name of the account, null if it is gone
+ * @param bool $names_visible for votes: the plugin option "Names of voters"
+ *    allows the owner to see names; comments always show their author
+ * @return array 'who' => 'member', 'guest', 'former' or 'hidden';
+ *    'name' => string, only for 'member'
+ */
+function like_bravo_feedback_who($is_guest, $name, $names_visible)
+{
+  if (!$names_visible)
+  {
+    return array('who' => 'hidden', 'name' => null);
+  }
+  if ($is_guest)
+  {
+    return array('who' => 'guest', 'name' => null);
+  }
+  if (null === $name or '' === (string)$name)
+  {
+    return array('who' => 'former', 'name' => null);
+  }
+
+  return array('who' => 'member', 'name' => (string)$name);
+}

@@ -539,6 +539,105 @@ ok('member deleted: own read marks gone, vote and its time kept', array(0, 0, 1,
   count(query2array('SELECT * FROM '.LIKE_BRAVO_FEEDBACK_READ_TABLE.' WHERE user_id = '.$fb2)),
   count(query2array('SELECT * FROM '.RATE_TABLE.' WHERE user_id = '.$fb2)),
   count(query2array('SELECT * FROM '.LIKE_BRAVO_VOTE_TIME_TABLE.' WHERE user_id = '.$fb2))));
+
+echo "== 16. feedback list of an owner\n";
+include_once(LIKE_BRAVO_PATH.'include/feedback.inc.php');
+// photos A and C belong to the owner: A like + bravo (T1), C a star photo (T3); B belongs to Alice
+$conf['like_bravo'] = like_bravo_default_conf(); $conf['like_bravo']['allow_guests'] = true; $conf['rate_anonymous'] = true; $conf['comments_validation'] = false;
+mode($t1, LIKE_BRAVO_MODE_BOTH);
+pwg_query('DELETE FROM '.RATE_TABLE); foreach (feedback_tables() as $table) pwg_query('DELETE FROM '.$table);
+$snap['added_by'] = query2array('SELECT id, added_by FROM '.IMAGES_TABLE." WHERE id IN ($a, $b, $c)", 'id', 'added_by');
+foreach (array('owner', 'alice', 'bob', 'karl') as $name) $fbu[$name] = (int)register_user('lb_test_'.$name, 'lb'.uniqid(), '', false, $errors);
+$own = $fbu['owner']; $al = $fbu['alice']; $bo = $fbu['bob']; $ca = $fbu['karl'];
+pwg_query('UPDATE '.IMAGES_TABLE." SET added_by = $own WHERE id IN ($a, $c)"); pwg_query('UPDATE '.IMAGES_TABLE." SET added_by = $al WHERE id = $b");
+pwg_query('UPDATE '.USER_INFOS_TABLE." SET registration_date = '2026-01-01 00:00:00' WHERE user_id = $own");
+conf_update_param('like_bravo_feedback_since', '2026-01-01 00:00:00', true);
+
+visitor($al, '203.0.113.21'); ws_vote($a, 'like');
+visitor($bo, '203.0.113.22'); ws_vote($a, 'bravo'); ws_vote($b, 'like');
+visitor($own, '203.0.113.23'); ws_vote($a, 'like');
+visitor($guest, '198.51.100.7'); ws_vote($a, 'like');
+vote($a, $ca, 1); vote($c, $al, 4); // dormant vote of Carl, star vote of Alice
+pwg_query('UPDATE '.LIKE_BRAVO_VOTE_TIME_TABLE." SET changed_at = CASE user_id WHEN $al THEN '2026-11-20 10:00:00' WHEN $bo THEN '2026-11-20 11:00:00' ELSE '2026-11-20 09:00:00' END");
+$long = 'lb_test_ Das Licht im Hintergrund ist wunderbar und die Farben leuchten richtig schön warm.';
+$cm = array();
+foreach (array(
+    'alice' => array($a, $al, 'lb_test_alice', $long, '2026-11-20 12:00:00'),
+    'bob_star' => array($c, $bo, 'lb_test_bob', 'lb_test_ on a star photo', '2026-11-20 08:00:00'),
+    'bob_waiting' => array($a, $bo, 'lb_test_bob', 'lb_test_ not validated', null),
+    'owner' => array($a, $own, 'lb_test_owner', 'lb_test_ my own', '2026-11-20 13:00:00'),
+    'guest' => array($a, $guest, 'Hans', 'lb_test_ from a guest', '2026-11-20 07:00:00'),
+    'carl_b' => array($b, $ca, 'lb_test_carl', 'lb_test_ on photo B', '2026-11-20 14:00:00'),
+    ) as $key => $x)
+{
+  single_insert(COMMENTS_TABLE, array('image_id'=>$x[0], 'date'=>'2026-11-20 06:00:00', 'author'=>$x[2], 'author_id'=>$x[1], 'anonymous_id'=>'203.0.113',
+    'content'=>$x[3], 'validated'=> null === $x[4] ? 'false' : 'true', 'validation_date'=>$x[4]));
+  $cm[$key] = (int)pwg_db_insert_id(COMMENTS_TABLE);
+}
+ok('list: newest first; own votes and comments, dormant and star votes, other photos and waiting comments left out', array(
+  "comment|member|lb_test_alice|$a|unread", "bravo|member|lb_test_bob|$a|unread", "like|member|lb_test_alice|$a|unread",
+  "like|guest||$a|unread", "comment|member|lb_test_bob|$c|unread", "comment|guest||$a|unread"), fb_sig($own));
+$list = like_bravo_feedback_list($own);
+ok('votes carry the current totals of the photo (own vote counted, dormant not)', array(3, 1, LIKE_BRAVO_MODE_BOTH), array($list['entries'][1]['likes'], $list['entries'][1]['bravos'], $list['entries'][1]['mode']));
+ok('comment: excerpt, not edited, time of validation', array('Das Licht im Hintergrund ist wunderbar und die Farben…', false, '2026-11-20 12:00:00'),
+  array(like_bravo_excerpt(substr($long, 9)), $list['entries'][0]['edited'], $list['entries'][0]['time']));
+ok('vote with a time of its own', array('2026-11-20 11:00:00', false), array($list['entries'][1]['time'], $list['entries'][1]['date_only']));
+ok('unread count agrees with the list', 6, like_bravo_feedback_unread_count($own));
+
+ok('mark read: Alice\'s like', true, like_bravo_feedback_mark_read($own, 'vote', $a, $al, ''));
+ok('mark read: the guest\'s like, by its identifier', true, like_bravo_feedback_mark_read($own, 'vote', $a, $guest, '198.51.100'));
+ok('mark read: refused for an entry of another owner', false, like_bravo_feedback_mark_read($own, 'vote', $b, $bo, ''));
+ok('mark read: refused for a comment waiting for validation', false, like_bravo_feedback_mark_read($own, 'comment', $cm['bob_waiting']));
+ok('two entries read', array(4, "like|member|lb_test_alice|$a"), array(like_bravo_feedback_unread_count($own), fb_sig($own)[2]));
+pwg_query('UPDATE '.LIKE_BRAVO_FEEDBACK_READ_TABLE." SET read_at = '2026-11-21 00:00:00'"); // read yesterday
+visitor($al, '203.0.113.21'); ws_vote($a, 'bravo');
+ok('Alice changes like -> bravo: newest, unread again', array("bravo|member|lb_test_alice|$a|unread", 5), array(fb_sig($own)[0], like_bravo_feedback_unread_count($own)));
+visitor($bo, '203.0.113.22'); ws_vote($a, 'none');
+ok('Bob takes his bravo back: the entry is gone', 0, count(array_filter(fb_sig($own), function($e) { return 0 === strpos($e, 'bravo|member|lb_test_bob'); })));
+
+$conf['like_bravo']['show_names'] = 'off';
+ok('"Names of voters" off: votes without names, comments keep theirs', array("bravo|hidden||$a|unread", "comment|member|lb_test_alice|$a|unread"), array_slice(fb_sig($own), 0, 2));
+$conf['like_bravo']['show_names'] = 'members';
+$conf['like_bravo']['allow_guests'] = false;
+ok('guests no longer take part: their votes are left out, their comments stay', array(false, true),
+  array(in_array("like|guest||$a", fb_sig($own), true), in_array("comment|guest||$a|unread", fb_sig($own), true)));
+$conf['like_bravo']['allow_guests'] = true;
+
+ok('filter unread agrees with the count', like_bravo_feedback_unread_count($own), count(like_bravo_feedback_list($own, 1, 50, true)['entries']));
+ok('filter votes / comments', array(array('bravo', 'like'), array('comment')),
+  array(array_values(array_unique(array_column(like_bravo_feedback_list($own, 1, 50, false, 'votes')['entries'], 'kind'))),
+    array_values(array_unique(array_column(like_bravo_feedback_list($own, 1, 50, false, 'comments')['entries'], 'kind')))));
+$p1 = like_bravo_feedback_list($own, 1, 2); $p3 = like_bravo_feedback_list($own, 3, 2);
+ok('pages of 2: page 1 full with more, page 3 the last', array(2, true, 1, false), array(count($p1['entries']), $p1['has_more'], count($p3['entries']), $p3['has_more']));
+ok('pages together are the whole list', fb_sig($own), array_merge(fb_sig($own, 1, 2), fb_sig($own, 2, 2), fb_sig($own, 3, 2)));
+
+mode($t1, LIKE_BRAVO_MODE_LIKE);
+ok('album switched to like only: Alice\'s bravo shows as a like', "like|member|lb_test_alice|$a|unread", fb_sig($own)[0]);
+mode($t1, null);
+ok('album switched to stars: no vote entries, comments stay', array('comment'), array_values(array_unique(array_map(function($e) { return explode('|', $e)[0]; }, fb_sig($own)))));
+mode($t1, LIKE_BRAVO_MODE_BOTH);
+
+like_bravo_feedback_mark_read($own, 'comment', $cm['alice']);
+pwg_query('UPDATE '.LIKE_BRAVO_FEEDBACK_READ_TABLE." SET read_at = '2026-11-21 00:00:00'");
+visitor($al, '203.0.113.21');
+edit_comment($cm['alice'], $a, 'lb_test_ edited: even better', '');
+$edited = array_values(array_filter(like_bravo_feedback_list($own)['entries'], function($e) use ($cm) { return 'comment' === $e['kind'] and $e['comment_id'] == $cm['alice']; }))[0];
+ok('Alice edits her comment: unread again, edited, new text', array('lb_test_alice', true, true, 'edited: even better'),
+  array($edited['name'], $edited['unread'], $edited['edited'], substr($edited['excerpt'], 9)));
+
+like_bravo_feedback_mark_all_read($own);
+ok('mark all as read: nothing unread, single marks dropped', array(0, 0, array()),
+  array(like_bravo_feedback_unread_count($own), count(query2array('SELECT * FROM '.LIKE_BRAVO_FEEDBACK_READ_TABLE.' WHERE user_id = '.$own)),
+    array_filter(array_column(like_bravo_feedback_list($own)['entries'], 'unread'))));
+sleep(1); // times have whole seconds
+visitor($ca, '203.0.113.24'); ws_vote($a, 'like');
+ok('a new like after "mark all as read" is unread', array(1, "like|member|lb_test_karl|$a|unread"), array(like_bravo_feedback_unread_count($own), fb_sig($own)[0]));
+
+pwg_query('DELETE FROM '.LIKE_BRAVO_FEEDBACK_USER_TABLE.' WHERE user_id = '.$own);
+conf_update_param('like_bravo_feedback_since', '2099-01-01 00:00:00', true);
+ok('member without "mark all as read": what came before the start of feedback is read', 0, like_bravo_feedback_unread_count($own));
+ok('a member without photos has no feedback', array(0, array()), array(like_bravo_feedback_unread_count($ca), like_bravo_feedback_list($ca)['entries']));
+
 $conf['rate_anonymous'] = $rate_anonymous_before;
 mode($t1, null);
 
@@ -552,6 +651,7 @@ function restore_snapshot() {
   if ($ids) delete_categories($ids);
   foreach (query2array("SELECT id FROM ".USERS_TABLE." WHERE username LIKE 'lb_test_%'", null, 'id') as $id) delete_user($id);
   pwg_query('DELETE FROM '.COMMENTS_TABLE." WHERE content LIKE 'lb_test_%'");
+  if (!empty($snap['added_by'])) foreach ($snap['added_by'] as $id => $by) pwg_query('UPDATE '.IMAGES_TABLE.' SET added_by = '.(int)$by.' WHERE id = '.(int)$id);
   pwg_query('DELETE FROM '.RATE_TABLE); pwg_query('DELETE FROM '.LIKE_BRAVO_MODES_TABLE);
   foreach ($snap['feedback'] as $table => $rows) { pwg_query('DELETE FROM '.$table); if ($rows) mass_inserts($table, array_keys($rows[0]), $rows); }
   conf_update_param('like_bravo_feedback_since', $snap['since'], true);
@@ -602,3 +702,6 @@ function comment_edited($cid) { $r = query2array('SELECT e.edited_at, c.validati
   return like_bravo_comment_is_edited($r[0]['edited_at'], $r[0]['validation_date']); }
 function insert_row($table, $row) { // single_insert() would store '' as NULL
   pwg_query('INSERT INTO '.$table.' ('.implode(', ', array_keys($row)).") VALUES ('".implode("', '", array_map('pwg_db_real_escape_string', $row))."')"); }
+function fb_sig($owner, $page = 1, $per_page = 20, $unread = false, $kind = 'all') { // "kind|who|name|photo[|unread]" of each entry
+  return array_map(function($e) { return $e['kind'].'|'.$e['who'].'|'.$e['name'].'|'.$e['image_id'].($e['unread'] ? '|unread' : ''); },
+    like_bravo_feedback_list($owner, $page, $per_page, $unread, $kind)['entries']); }
