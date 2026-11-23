@@ -524,5 +524,27 @@ check('filter: likes or without my vote', array(7, 1, 3, 4, 5, 6), like_bravo_fi
 check('filter: photo being shown is kept', array(2, 3), like_bravo_filter_items($f_items, $f_modes, $f_rates, array('bravo'), 3));
 check('filter: photos missing in the modes are star photos', array(8), like_bravo_filter_items(array(8), array(), array(8 => '5'), array('none')));
 
+// --- feedback: time of votes, edited comments -------------------------------
+check('vote time: a new vote gets a time', true, like_bravo_vote_changed(null, 2));
+check('vote time: like -> bravo gets a new time', true, like_bravo_vote_changed(2, 4));
+check('vote time: stored rates come as strings', true, like_bravo_vote_changed('2', 4));
+check('vote time: the same vote again keeps its time', false, like_bravo_vote_changed('4', 4));
+check('vote time: a vote taken back has no time', false, like_bravo_vote_changed(4, null));
+check('vote time: nothing to take back', false, like_bravo_vote_changed(null, null));
+
+check('edited comment: id of an edit', 17, like_bravo_edited_comment_id('validate', array('comment_id' => '17', 'content' => 'x')));
+check('edited comment: a moderated edit counts', 17, like_bravo_edited_comment_id('moderate', array('comment_id' => 17)));
+check('edited comment: a rejected edit does not', null, like_bravo_edited_comment_id('reject', array('comment_id' => 17)));
+check('edited comment: a new comment has no comment_id', null, like_bravo_edited_comment_id('validate', array('image_id' => 3, 'content' => 'x')));
+check('edited comment: no id from the request but a number', null, like_bravo_edited_comment_id('validate', array('comment_id' => '17 OR 1=1')));
+check('edited comment: no id 0', null, like_bravo_edited_comment_id('validate', array('comment_id' => '0')));
+check('edited comment: no array, no id', null, like_bravo_edited_comment_id('validate', 'x'));
+
+check('edited comment: saved at once (same second)', true, like_bravo_comment_is_edited('2026-11-23 10:00:00', '2026-11-23 10:00:00'));
+check('edited comment: validated later by a moderator', true, like_bravo_comment_is_edited('2026-11-23 10:00:00', '2026-11-24 08:00:00'));
+check('edited comment: refused by the core, validation stays older', false, like_bravo_comment_is_edited('2026-11-23 10:00:00', '2026-11-20 09:00:00'));
+check('edited comment: waiting for a moderator', false, like_bravo_comment_is_edited('2026-11-23 10:00:00', null));
+check('edited comment: never edited', false, like_bravo_comment_is_edited(null, '2026-11-20 09:00:00'));
+
 echo ($checks - $failures) . '/' . $checks . " checks passed\n";
 exit($failures > 0 ? 1 : 0);

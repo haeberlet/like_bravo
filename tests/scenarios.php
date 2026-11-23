@@ -3,7 +3,8 @@
  * Scenario tests against a running Piwigo: switching albums between stars
  * and thumbs, photos in several albums, album deletion, deactivation,
  * uninstall and reinstall, votes of guests and "generic" accounts, albums
- * without rating.
+ * without rating, the data of the feedback for owners (time of votes,
+ * edited comments, clean-up).
  *
  * ONLY FOR A TEST GALLERY. The run replaces all ratings and album modes while
  * it works and uninstalls the plugin once. Existing ratings, modes and
@@ -25,6 +26,7 @@ include_once('./include/common.inc.php');
 include_once('./admin/include/functions.php');
 include_once('./admin/include/plugins.class.php');
 include_once('./include/functions_rate.inc.php');
+include_once('./include/functions_comment.inc.php');
 include_once('./include/ws_core.inc.php');
 include_once(LIKE_BRAVO_PATH.'include/score.inc.php');
 include_once(LIKE_BRAVO_PATH.'include/ws.inc.php');
@@ -54,7 +56,10 @@ $snap = array(
   'rates' => query2array('SELECT * FROM '.RATE_TABLE),
   'modes' => query2array('SELECT * FROM '.LIKE_BRAVO_MODES_TABLE),
   'conf' => $conf['like_bravo'],
+  'since' => $conf['like_bravo_feedback_since'],
+  'feedback' => array(),
   );
+foreach (feedback_tables() as $table) $snap['feedback'][$table] = query2array('SELECT * FROM '.$table);
 echo "snapshot: ".count($snap['rates'])." rates, ".count($snap['modes'])." modes\n";
 register_shutdown_function('restore_snapshot');
 pwg_query('DELETE FROM '.RATE_TABLE); pwg_query('DELETE FROM '.LIKE_BRAVO_MODES_TABLE); like_bravo_get_explicit_modes(true);
@@ -137,6 +142,7 @@ $n_rates = count(query2array('SELECT * FROM '.RATE_TABLE));
 $errors = (new plugins())->perform_action('uninstall', 'like_bravo');
 ok('uninstall without errors', array(), $errors);
 ok('plugin table removed', 0, count(query2array("SHOW TABLES LIKE '".LIKE_BRAVO_MODES_TABLE."'")));
+ok('feedback tables removed', 0, count(array_filter(feedback_tables(), function($t) { return count(query2array("SHOW TABLES LIKE '".$t."'")); })));
 ok('plugin settings removed', 0, count(query2array("SELECT * FROM ".CONFIG_TABLE." WHERE param LIKE 'like_bravo%'")));
 ok('plugin no longer registered', 0, count(query2array("SELECT * FROM ".PLUGINS_TABLE." WHERE id = 'like_bravo'")));
 ok('all ratings are still there', $n_rates, count(query2array('SELECT * FROM '.RATE_TABLE)));
@@ -147,6 +153,10 @@ $errors = (new plugins())->perform_action('activate', 'like_bravo');
 ok('fresh install without errors', array(), $errors);
 ok('table is back and empty', array(1, 0), array(count(query2array("SHOW TABLES LIKE '".LIKE_BRAVO_MODES_TABLE."'")), count(query2array('SELECT * FROM '.LIKE_BRAVO_MODES_TABLE))));
 ok('plugin active', 'active', query2array("SELECT state FROM ".PLUGINS_TABLE." WHERE id = 'like_bravo'", null, 'state')[0]);
+ok('feedback tables are back, empty, start of feedback set', array(4, 0, true), array(
+  count(array_filter(feedback_tables(), function($t) { return count(query2array("SHOW TABLES LIKE '".$t."'")); })),
+  array_sum(array_map(function($t) { return count(query2array('SELECT * FROM '.$t)); }, feedback_tables())),
+  !empty($conf['like_bravo_feedback_since'])));
 
 echo "== 9. guests\n";
 // T1 like + bravo: photos A and B are thumbs photos, photo C is a star photo
@@ -459,6 +469,79 @@ ok('no album in a thumbs mode: nothing filtered, no icons', array($all, array())
   array(filtered('index', array('lb_filter' => 'like'), $all), filter_buttons()));
 $_SERVER['SCRIPT_NAME'] = $script_name; $_GET = array(); $_SESSION = array();
 
+echo "== 15. feedback: time of votes, edited comments, clean-up\n";
+// T1 like + bravo again: photo A is a thumbs photo
+$conf['like_bravo'] = like_bravo_default_conf(); $conf['like_bravo']['allow_guests'] = true; $conf['rate_anonymous'] = true;
+$conf['comments_validation'] = false; // edits are saved at once
+mode($t1, LIKE_BRAVO_MODE_BOTH);
+pwg_query('DELETE FROM '.RATE_TABLE); foreach (feedback_tables() as $table) pwg_query('DELETE FROM '.$table);
+$fb = (int)register_user('lb_test_feedback', 'lb'.uniqid(), '', false, $errors);
+$fb2 = (int)register_user('lb_test_feedback2', 'lb'.uniqid(), '', false, $errors);
+$owner = (int)$webmaster['id'];
+
+visitor($fb, '203.0.113.7'); ws_vote($a, 'like');
+ok('member like: a time under the key of the rate row', rate_keys($a), array_column(vote_times($a), 'key'));
+pwg_query('UPDATE '.LIKE_BRAVO_VOTE_TIME_TABLE." SET changed_at = '2026-01-01 00:00:00'");
+ws_vote($a, 'like');
+ok('the same vote again keeps its time', array("$fb|203.0.113|2026-01-01 00:00:00"), array_column(vote_times($a), 'row'));
+visitor($fb, '198.51.100.5'); ws_vote($a, 'like');
+ok('same vote from another address: time kept, key follows the rate row', array("$fb|198.51.100|2026-01-01 00:00:00"), array_column(vote_times($a), 'row'));
+ws_vote($a, 'bravo');
+ok('like -> bravo: a new time, unread again', array(true), array_map(function($r) { return $r['t'] > '2026-01-01 00:00:00'; }, vote_times($a)));
+insert_row(LIKE_BRAVO_FEEDBACK_READ_TABLE, array('user_id'=>$owner, 'kind'=>'vote', 'ref_id'=>$a, 'rater_id'=>$fb, 'rater_anonymous_id'=>'', 'read_at'=>'2026-11-23 12:00:00'));
+ws_vote($a, 'none');
+ok('vote taken back: no time, no read mark', array(0, 0), array(count(vote_times($a)), read_marks('vote', $a)));
+
+visitor($guest, '203.0.113.7'); ws_vote($a, 'like');
+visitor($guest, '198.51.100.5'); ws_vote($a, 'like');
+ok('two guests: one time each, under the key of their rate rows', rate_keys($a), array_column(vote_times($a), 'key'));
+visitor($guest, '203.0.113.7'); ws_vote($a, 'none');
+ok('one guest takes the like back: only the other time is left', array("$guest|198.51.100"), array_column(vote_times($a), 'key'));
+visitor($guest, '198.51.100.5');
+ok('a refused vote stores no time', array('error 403', 1), array(ws_vote($c, 'like'), count(vote_times($a)) + count(vote_times($c))));
+
+// comments of the member $fb on photo A, written on 20.11.
+single_insert(COMMENTS_TABLE, array('image_id'=>$a, 'date'=>'2026-11-20 10:00:00', 'author'=>'lb_test_feedback', 'author_id'=>$fb, 'anonymous_id'=>'203.0.113',
+  'content'=>'lb_test_comment', 'validated'=>'true', 'validation_date'=>'2026-11-20 10:00:00'));
+$cid = (int)pwg_db_insert_id(COMMENTS_TABLE);
+ok('a new comment is no edit', 'validate', trigger_change('user_comment_check', 'validate', array('image_id'=>$a, 'author'=>'lb_test_feedback', 'content'=>'lb_test_comment new')));
+ok('nothing noted for a new comment', 0, count(query2array('SELECT * FROM '.LIKE_BRAVO_COMMENT_EDIT_TABLE)));
+visitor($fb, '203.0.113.7');
+$action = edit_comment($cid, $a, 'lb_test_comment edited', '');
+ok('edit by its author: saved, noted, shown as edited', array('validate', 1, true), array($action, count(query2array('SELECT * FROM '.LIKE_BRAVO_COMMENT_EDIT_TABLE.' WHERE comment_id = '.$cid)), comment_edited($cid)));
+pwg_query('UPDATE '.COMMENTS_TABLE." SET validation_date = '2026-11-20 10:00:00' WHERE id = ".$cid);
+pwg_query('DELETE FROM '.LIKE_BRAVO_COMMENT_EDIT_TABLE);
+$action = edit_comment($cid, $a, 'lb_test_comment refused', 'http://exa mple');
+ok('edit refused by the core (invalid website): not shown as edited', array('reject', false), array($action, comment_edited($cid)));
+insert_row(LIKE_BRAVO_FEEDBACK_READ_TABLE, array('user_id'=>$owner, 'kind'=>'comment', 'ref_id'=>$cid, 'rater_id'=>0, 'rater_anonymous_id'=>'', 'read_at'=>'2026-11-23 12:00:00'));
+visitor($owner, '203.0.113.7');
+delete_user_comment($cid);
+ok('comment deleted: its edit and read marks are gone', array(0, 0), array(count(query2array('SELECT * FROM '.LIKE_BRAVO_COMMENT_EDIT_TABLE.' WHERE comment_id = '.$cid)), read_marks('comment', $cid)));
+
+// photo deleted: the core removes it with its votes and comments, then tells the plugins
+$gone = 9999999;
+insert_row(LIKE_BRAVO_VOTE_TIME_TABLE, array('image_id'=>$gone, 'user_id'=>$fb, 'anonymous_id'=>'', 'changed_at'=>'2026-11-23 12:00:00'));
+insert_row(LIKE_BRAVO_FEEDBACK_READ_TABLE, array('user_id'=>$owner, 'kind'=>'vote', 'ref_id'=>$gone, 'rater_id'=>$fb, 'rater_anonymous_id'=>'', 'read_at'=>'2026-11-23 12:00:00'));
+insert_row(LIKE_BRAVO_COMMENT_EDIT_TABLE, array('comment_id'=>$gone, 'edited_at'=>'2026-11-23 12:00:00'));
+insert_row(LIKE_BRAVO_FEEDBACK_READ_TABLE, array('user_id'=>$owner, 'kind'=>'comment', 'ref_id'=>$gone, 'rater_id'=>0, 'rater_anonymous_id'=>'', 'read_at'=>'2026-11-23 12:00:00'));
+trigger_notify('delete_elements', array($gone));
+ok('photo deleted: times, edits and read marks of it are gone', array(0, 0, 0, 0), array(count(vote_times($gone)), read_marks('vote', $gone),
+  count(query2array('SELECT * FROM '.LIKE_BRAVO_COMMENT_EDIT_TABLE)), read_marks('comment', $gone)));
+
+// member deleted: the core keeps the votes, the plugin keeps their times
+visitor($fb2, '203.0.113.9'); ws_vote($a, 'like');
+insert_row(LIKE_BRAVO_FEEDBACK_USER_TABLE, array('user_id'=>$fb2, 'read_all_before'=>'2026-11-23 12:00:00'));
+insert_row(LIKE_BRAVO_FEEDBACK_READ_TABLE, array('user_id'=>$fb2, 'kind'=>'vote', 'ref_id'=>$b, 'rater_id'=>$fb, 'rater_anonymous_id'=>'', 'read_at'=>'2026-11-23 12:00:00'));
+visitor($owner, '203.0.113.7');
+delete_user($fb2);
+ok('member deleted: own read marks gone, vote and its time kept', array(0, 0, 1, 1), array(
+  count(query2array('SELECT * FROM '.LIKE_BRAVO_FEEDBACK_USER_TABLE.' WHERE user_id = '.$fb2)),
+  count(query2array('SELECT * FROM '.LIKE_BRAVO_FEEDBACK_READ_TABLE.' WHERE user_id = '.$fb2)),
+  count(query2array('SELECT * FROM '.RATE_TABLE.' WHERE user_id = '.$fb2)),
+  count(query2array('SELECT * FROM '.LIKE_BRAVO_VOTE_TIME_TABLE.' WHERE user_id = '.$fb2))));
+$conf['rate_anonymous'] = $rate_anonymous_before;
+mode($t1, null);
+
 restore_snapshot();
 echo $fail ? "\n$fail FAILED\n" : "\nALL PASSED\n";
 
@@ -468,7 +551,10 @@ function restore_snapshot() {
   $ids = query2array("SELECT id FROM ".CATEGORIES_TABLE." WHERE name LIKE 'cl_test_%'", null, 'id');
   if ($ids) delete_categories($ids);
   foreach (query2array("SELECT id FROM ".USERS_TABLE." WHERE username LIKE 'lb_test_%'", null, 'id') as $id) delete_user($id);
+  pwg_query('DELETE FROM '.COMMENTS_TABLE." WHERE content LIKE 'lb_test_%'");
   pwg_query('DELETE FROM '.RATE_TABLE); pwg_query('DELETE FROM '.LIKE_BRAVO_MODES_TABLE);
+  foreach ($snap['feedback'] as $table => $rows) { pwg_query('DELETE FROM '.$table); if ($rows) mass_inserts($table, array_keys($rows[0]), $rows); }
+  conf_update_param('like_bravo_feedback_since', $snap['since'], true);
   if ($snap['rates']) mass_inserts(RATE_TABLE, array_keys($snap['rates'][0]), $snap['rates']);
   if ($snap['modes']) mass_inserts(LIKE_BRAVO_MODES_TABLE, array_keys($snap['modes'][0]), $snap['modes']);
   conf_update_param('like_bravo', $snap['conf'], true);
@@ -478,7 +564,8 @@ function restore_snapshot() {
   update_rating_score();
   echo "\nrestored: ".count(query2array('SELECT * FROM '.RATE_TABLE))." rates, ".count(query2array('SELECT * FROM '.LIKE_BRAVO_MODES_TABLE))." modes, test albums left: "
     .count(query2array("SELECT id FROM ".CATEGORIES_TABLE." WHERE name LIKE 'cl_test_%'")).", test users left: "
-    .count(query2array("SELECT id FROM ".USERS_TABLE." WHERE username LIKE 'lb_test_%'")).", plugin: "
+    .count(query2array("SELECT id FROM ".USERS_TABLE." WHERE username LIKE 'lb_test_%'")).", test comments left: "
+    .count(query2array("SELECT id FROM ".COMMENTS_TABLE." WHERE content LIKE 'lb_test_%'")).", plugin: "
     .json_encode(query2array("SELECT state FROM ".PLUGINS_TABLE." WHERE id = 'like_bravo'", null, 'state'))."\n";
 }
 
@@ -501,3 +588,17 @@ function ws_voters($img) { // likeBravo.getVoters as the current visitor
   $params = array('image_id'=>$img); $service = null;
   $r = @like_bravo_ws_get_voters($params, $service);
   return $r instanceof PwgError ? 'error '.$r->code() : $r; }
+function feedback_tables() { return array(LIKE_BRAVO_VOTE_TIME_TABLE, LIKE_BRAVO_FEEDBACK_USER_TABLE, LIKE_BRAVO_FEEDBACK_READ_TABLE, LIKE_BRAVO_COMMENT_EDIT_TABLE); }
+function rate_keys($img) { $k = array(); foreach (query2array('SELECT user_id u, anonymous_id a FROM '.RATE_TABLE.' WHERE element_id = '.(int)$img) as $x) $k[] = $x['u'].'|'.$x['a']; sort($k); return $k; }
+function vote_times($img) { $rows = array(); // 'key' => "user|identifier", 'row' => "user|identifier|time", 't' => time
+  foreach (query2array('SELECT user_id u, anonymous_id a, changed_at t FROM '.LIKE_BRAVO_VOTE_TIME_TABLE.' WHERE image_id = '.(int)$img.' ORDER BY user_id, anonymous_id') as $x)
+    $rows[] = array('key'=>$x['u'].'|'.$x['a'], 'row'=>$x['u'].'|'.$x['a'].'|'.$x['t'], 't'=>$x['t']);
+  usort($rows, function($p, $q) { return strcmp($p['key'], $q['key']); }); return $rows; }
+function read_marks($kind, $ref) { return count(query2array('SELECT * FROM '.LIKE_BRAVO_FEEDBACK_READ_TABLE." WHERE kind = '".$kind."' AND ref_id = ".(int)$ref)); }
+function edit_comment($cid, $img, $content, $website) { // update_user_comment() as on the photo page, with a valid form key
+  $key = get_ephemeral_key(0, $img); usleep(200000);
+  return @update_user_comment(array('comment_id'=>$cid, 'image_id'=>$img, 'content'=>$content, 'website_url'=>$website), $key); }
+function comment_edited($cid) { $r = query2array('SELECT e.edited_at, c.validation_date FROM '.COMMENTS_TABLE.' c LEFT JOIN '.LIKE_BRAVO_COMMENT_EDIT_TABLE.' e ON e.comment_id = c.id WHERE c.id = '.(int)$cid);
+  return like_bravo_comment_is_edited($r[0]['edited_at'], $r[0]['validation_date']); }
+function insert_row($table, $row) { // single_insert() would store '' as NULL
+  pwg_query('INSERT INTO '.$table.' ('.implode(', ', array_keys($row)).") VALUES ('".implode("', '", array_map('pwg_db_real_escape_string', $row))."')"); }

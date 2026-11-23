@@ -6,6 +6,7 @@ include_once(dirname(__FILE__) . '/include/functions_logic.inc.php');
 class like_bravo_maintain extends PluginMaintain
 {
   private $table;
+  private $feedback_tables;
 
   function __construct($plugin_id)
   {
@@ -13,12 +14,19 @@ class like_bravo_maintain extends PluginMaintain
 
     global $prefixeTable;
     $this->table = $prefixeTable . 'like_bravo_modes';
+    $this->feedback_tables = array(
+      'vote_time' => $prefixeTable . 'like_bravo_vote_time',
+      'feedback_user' => $prefixeTable . 'like_bravo_feedback_user',
+      'feedback_read' => $prefixeTable . 'like_bravo_feedback_read',
+      'comment_edit' => $prefixeTable . 'like_bravo_comment_edit',
+      );
   }
 
   /**
-   * Creates the album mode table and stores the default configuration.
-   * Safe to run repeatedly: existing modes and settings are kept, missing
-   * settings are filled with their defaults.
+   * Creates the plugin tables and stores the default configuration.
+   * Safe to run repeatedly: existing modes, settings and feedback data are
+   * kept, missing settings are filled with their defaults. Piwigo also runs
+   * it through update() when the version in main.inc.php rises.
    */
   function install($plugin_version, &$errors=array())
   {
@@ -34,8 +42,77 @@ CREATE TABLE IF NOT EXISTS `'.$this->table.'` (
 ;';
     pwg_query($query);
 
+    $this->create_feedback_tables();
+
     $stored = isset($conf['like_bravo']) ? safe_unserialize($conf['like_bravo']) : array();
     conf_update_param('like_bravo', like_bravo_normalize_conf($stored), true);
+
+    // Feedback starts now: what members received before counts as read,
+    // also for members without a row of their own (see KONZEPT-RUECKMELDUNGEN
+    // 12.2). Kept on later updates.
+    if (empty($conf['like_bravo_feedback_since']))
+    {
+      list($now) = pwg_db_fetch_row(pwg_query('SELECT NOW();'));
+      conf_update_param('like_bravo_feedback_since', $now, true);
+    }
+  }
+
+  /**
+   * Tables for the feedback of the owners (the bell). The identifier of
+   * anonymous voters gets the character set and collation of the core
+   * column it is joined with, so that MySQL and MariaDB compare them
+   * without an error, whatever the defaults of the server are.
+   */
+  private function create_feedback_tables()
+  {
+    $column = pwg_db_fetch_assoc(pwg_query('SHOW FULL COLUMNS FROM `'.RATE_TABLE.'` LIKE \'anonymous_id\';'));
+    $anonymous_id = 'varchar(45)';
+    if (!empty($column['Collation']) and preg_match('/^([a-z0-9]+)_[a-z0-9_]+$/', $column['Collation'], $matches))
+    {
+      $anonymous_id.= ' CHARACTER SET '.$matches[1].' COLLATE '.$column['Collation'];
+    }
+
+    // time of day of likes and bravos: rate.date keeps only the day
+    pwg_query('
+CREATE TABLE IF NOT EXISTS `'.$this->feedback_tables['vote_time'].'` (
+  `image_id` mediumint(8) unsigned NOT NULL,
+  `user_id` mediumint(8) unsigned NOT NULL,
+  `anonymous_id` '.$anonymous_id.' NOT NULL default \'\',
+  `changed_at` datetime NOT NULL,
+  PRIMARY KEY (`image_id`, `user_id`, `anonymous_id`)
+)
+;');
+
+    // "mark all as read" of one member
+    pwg_query('
+CREATE TABLE IF NOT EXISTS `'.$this->feedback_tables['feedback_user'].'` (
+  `user_id` mediumint(8) unsigned NOT NULL,
+  `read_all_before` datetime NOT NULL,
+  PRIMARY KEY (`user_id`)
+)
+;');
+
+    // entries read one by one: a vote (photo + voter) or a comment
+    pwg_query('
+CREATE TABLE IF NOT EXISTS `'.$this->feedback_tables['feedback_read'].'` (
+  `user_id` mediumint(8) unsigned NOT NULL,
+  `kind` enum(\'vote\',\'comment\') NOT NULL,
+  `ref_id` int(11) unsigned NOT NULL,
+  `rater_id` mediumint(8) unsigned NOT NULL default 0,
+  `rater_anonymous_id` '.$anonymous_id.' NOT NULL default \'\',
+  `read_at` datetime NOT NULL,
+  PRIMARY KEY (`user_id`, `kind`, `ref_id`, `rater_id`, `rater_anonymous_id`)
+)
+;');
+
+    // last edit of a comment, noted before the core saves it
+    pwg_query('
+CREATE TABLE IF NOT EXISTS `'.$this->feedback_tables['comment_edit'].'` (
+  `comment_id` int(11) unsigned NOT NULL,
+  `edited_at` datetime NOT NULL,
+  PRIMARY KEY (`comment_id`)
+)
+;');
   }
 
   function update($old_version, $new_version, &$errors=array())
@@ -84,6 +161,10 @@ CREATE TABLE IF NOT EXISTS `'.$this->table.'` (
   function uninstall()
   {
     pwg_query('DROP TABLE IF EXISTS `'.$this->table.'`;');
-    conf_delete_param('like_bravo');
+    foreach ($this->feedback_tables as $table)
+    {
+      pwg_query('DROP TABLE IF EXISTS `'.$table.'`;');
+    }
+    conf_delete_param(array('like_bravo', 'like_bravo_feedback_since'));
   }
 }

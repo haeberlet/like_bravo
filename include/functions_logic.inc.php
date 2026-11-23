@@ -882,3 +882,69 @@ function like_bravo_filter_items($items, $image_modes, $own_rates, $filter, $kee
 
   return $kept;
 }
+
+// --- feedback of the owners: time of votes, edited comments ----------------
+
+/**
+ * Whether storing a vote gives it a new time. The table rate keeps only
+ * the day, so the plugin keeps the time of a vote itself; a vote that is
+ * set again unchanged keeps its time, a changed one is unread again.
+ *
+ * @param int|null $old_rate rate stored before, null if none
+ * @param int|null $new_rate rate stored now, null if the vote was taken back
+ * @return bool
+ */
+function like_bravo_vote_changed($old_rate, $new_rate)
+{
+  if (null === $new_rate)
+  {
+    return false;
+  }
+
+  return null === $old_rate or (int)$old_rate !== (int)$new_rate;
+}
+
+/**
+ * The comment that an event user_comment_check is about, if it is an edit.
+ * The core passes the key comment_id only when a comment is edited, not
+ * when it is written.
+ *
+ * @param string $action 'validate', 'moderate' or 'reject'
+ * @param array $comment as passed by the core
+ * @return int|null
+ */
+function like_bravo_edited_comment_id($action, $comment)
+{
+  if ('reject' === $action or !is_array($comment) or !isset($comment['comment_id']))
+  {
+    return null;
+  }
+
+  $id = $comment['comment_id'];
+  if (!is_numeric($id) or (int)$id <= 0 or (string)(int)$id !== (string)$id)
+  {
+    return null;
+  }
+
+  return (int)$id;
+}
+
+/**
+ * Whether a comment shows as edited. The plugin notes an edit before the
+ * core saves it; the core may still refuse it, for example for an invalid
+ * website address. A saved edit sets the time of validation again (at
+ * once, or when a moderator validates it), a refused one does not.
+ *
+ * @param string|null $edited_at noted by the plugin, 'Y-m-d H:i:s'
+ * @param string|null $validation_date comments.validation_date
+ * @return bool
+ */
+function like_bravo_comment_is_edited($edited_at, $validation_date)
+{
+  if (empty($edited_at) or empty($validation_date))
+  {
+    return false;
+  }
+
+  return strcmp($validation_date, $edited_at) >= 0;
+}

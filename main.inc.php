@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Like & Bravo
-Version: 0.1.0
+Version: 0.2.0
 Description: Replaces the star rating by "Like" / "Bravo" in selected albums, built on the native rating system.
 Plugin URI:
 Author: Tilmann Haeberle
@@ -15,6 +15,10 @@ global $prefixeTable;
 define('LIKE_BRAVO_ID', basename(dirname(__FILE__)));
 define('LIKE_BRAVO_PATH', PHPWG_PLUGINS_PATH . LIKE_BRAVO_ID . '/');
 define('LIKE_BRAVO_MODES_TABLE', $prefixeTable . 'like_bravo_modes');
+define('LIKE_BRAVO_VOTE_TIME_TABLE', $prefixeTable . 'like_bravo_vote_time');
+define('LIKE_BRAVO_FEEDBACK_USER_TABLE', $prefixeTable . 'like_bravo_feedback_user');
+define('LIKE_BRAVO_FEEDBACK_READ_TABLE', $prefixeTable . 'like_bravo_feedback_read');
+define('LIKE_BRAVO_COMMENT_EDIT_TABLE', $prefixeTable . 'like_bravo_comment_edit');
 define('LIKE_BRAVO_ADMIN', get_root_url() . 'admin.php?page=plugin-' . LIKE_BRAVO_ID);
 
 include_once(LIKE_BRAVO_PATH . 'include/functions_logic.inc.php');
@@ -52,6 +56,17 @@ add_event_handler('loc_end_section_init', 'like_bravo_section_init',
 // album pages: filter by the member's own votes, after the personal pages are set up
 add_event_handler('loc_end_section_init', 'like_bravo_filter_section_init',
   EVENT_HANDLER_PRIORITY_NEUTRAL + 10, LIKE_BRAVO_PATH . 'include/filter.inc.php');
+
+// feedback of the owners: edited comments, and clean-up of the plugin's
+// tables. The edit is noted late, after the spam checks of other handlers.
+add_event_handler('user_comment_check', 'like_bravo_feedback_comment_check',
+  EVENT_HANDLER_PRIORITY_NEUTRAL + 20, LIKE_BRAVO_PATH . 'include/feedback_db.inc.php');
+add_event_handler('user_comment_deletion', 'like_bravo_feedback_comment_deletion',
+  EVENT_HANDLER_PRIORITY_NEUTRAL, LIKE_BRAVO_PATH . 'include/feedback_db.inc.php');
+add_event_handler('delete_elements', 'like_bravo_feedback_delete_elements',
+  EVENT_HANDLER_PRIORITY_NEUTRAL, LIKE_BRAVO_PATH . 'include/feedback_db.inc.php');
+add_event_handler('delete_user', 'like_bravo_feedback_delete_user',
+  EVENT_HANDLER_PRIORITY_NEUTRAL, LIKE_BRAVO_PATH . 'include/feedback_db.inc.php');
 
 if (defined('IN_ADMIN'))
 {

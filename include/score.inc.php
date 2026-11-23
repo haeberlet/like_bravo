@@ -1,6 +1,9 @@
 <?php
 defined('PHPWG_ROOT_PATH') or die('Hacking attempt!');
 
+// also loaded by the maintain class, before LIKE_BRAVO_PATH exists
+include_once(dirname(__FILE__) . '/feedback_db.inc.php');
+
 /**
  * Rating scores and votes in the database. The formulas live in
  * functions_logic.inc.php.
@@ -269,19 +272,28 @@ function like_bravo_set_anonymous_level($image_id, $level)
   $image_id = (int)$image_id;
   include_once(PHPWG_ROOT_PATH.'include/functions_rate.inc.php');
 
+  $anonymous_id = like_bravo_current_anonymous_id();
+  $old_rate = like_bravo_stored_rate($image_id, $user['id'], $anonymous_id);
+
   $rate = like_bravo_level_to_rate($level);
   if (null !== $rate)
   {
-    return false !== rate_picture($image_id, $rate);
+    if (false === rate_picture($image_id, $rate))
+    {
+      return false;
+    }
+    like_bravo_store_vote_time($image_id, $user['id'], $anonymous_id, false, $old_rate, $rate);
+    return true;
   }
 
   $query = '
 DELETE FROM '.RATE_TABLE.'
   WHERE element_id = '.$image_id.'
     AND user_id = '.(int)$user['id'].'
-    AND anonymous_id = \''.pwg_db_real_escape_string(like_bravo_current_anonymous_id()).'\'
+    AND anonymous_id = \''.pwg_db_real_escape_string($anonymous_id).'\'
 ;';
   pwg_query($query);
+  like_bravo_store_vote_time($image_id, $user['id'], $anonymous_id, false, $old_rate, null);
 
   update_rating_score($image_id);
 
@@ -301,6 +313,10 @@ function like_bravo_set_user_level($image_id, $user_id, $level)
   $image_id = (int)$image_id;
   $user_id = (int)$user_id;
 
+  $old_rate = like_bravo_stored_rate($image_id, $user_id);
+  // the core writes the identifier for members as well
+  $anonymous_id = like_bravo_current_anonymous_id();
+
   $query = '
 DELETE FROM '.RATE_TABLE.'
   WHERE element_id = '.$image_id.'
@@ -311,9 +327,6 @@ DELETE FROM '.RATE_TABLE.'
   $rate = like_bravo_level_to_rate($level);
   if (null !== $rate)
   {
-    // the core writes the identifier for members as well
-    $anonymous_id = like_bravo_current_anonymous_id();
-
     $query = '
 INSERT INTO '.RATE_TABLE.'
   (user_id, anonymous_id, element_id, rate, date)
@@ -322,6 +335,8 @@ INSERT INTO '.RATE_TABLE.'
 ;';
     pwg_query($query);
   }
+
+  like_bravo_store_vote_time($image_id, $user_id, $anonymous_id, true, $old_rate, $rate);
 
   include_once(PHPWG_ROOT_PATH.'include/functions_rate.inc.php');
   update_rating_score($image_id);
