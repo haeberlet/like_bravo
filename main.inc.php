@@ -57,6 +57,10 @@ add_event_handler('loc_end_section_init', 'like_bravo_section_init',
 add_event_handler('loc_end_section_init', 'like_bravo_filter_section_init',
   EVENT_HANDLER_PRIORITY_NEUTRAL + 10, LIKE_BRAVO_PATH . 'include/filter.inc.php');
 
+// feedback of the owners: the bell on every page of the gallery
+add_event_handler('loc_end_page_header', 'like_bravo_bell',
+  EVENT_HANDLER_PRIORITY_NEUTRAL, LIKE_BRAVO_PATH . 'include/bell.inc.php');
+
 // feedback of the owners: edited comments, and clean-up of the plugin's
 // tables. The edit is noted late, after the spam checks of other handlers.
 add_event_handler('user_comment_check', 'like_bravo_feedback_comment_check',

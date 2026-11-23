@@ -1,0 +1,345 @@
+/* Like & Bravo: the bell of the feedback for owners and its list. The list
+   takes the background and text colour of the page around the bell
+   (js/bell.js sets --lb-bell-bg and --lb-bell-fg), so it fits light and dark
+   themes; only the badge, the unread mark and its tint have colours of
+   their own. */
+
+.lb-bell-button,
+.lb-bell-panel {
+  --lb-bell-badge: #d9363e;
+  --lb-bell-unread: #2e8fd8;
+  --lb-bell-unread-bg: rgba(46, 143, 216, 0.12);
+  --lb-bell-line: rgba(128, 128, 128, 0.35);
+}
+
+/* --- the bell ------------------------------------------------------------ */
+.lb-bell-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  line-height: 1;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+.lb-bell-button:hover,
+.lb-bell-button:focus-visible,
+.lb-bell-button[aria-expanded="true"] {
+  background-color: rgba(128, 128, 128, 0.2);
+}
+
+.lb-bell-button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+
+.lb-bell-icon {
+  display: block;
+  pointer-events: none;
+}
+
+.lb-bell-badge {
+  position: absolute;
+  top: 1px;
+  right: -2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  border-radius: 9px;
+  background: var(--lb-bell-badge);
+  color: #fff;
+  font: bold 11px/18px sans-serif;
+  text-align: center;
+  pointer-events: none;
+}
+
+.lb-bell-badge[hidden] {
+  display: none;
+}
+
+/* places in the themes */
+.lb-bell-darkroom {
+  color: rgba(255, 255, 255, 0.85);
+  margin-right: 4px;
+}
+
+.navbar-light .lb-bell-darkroom {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+@media (min-width: 992px) {
+  /* after the menu, at the right end of the bar */
+  .lb-bell-darkroom {
+    order: 1;
+    margin: 0 0 0 8px;
+  }
+}
+
+.lb-bell-modus {
+  margin: -6px 8px -4px 0;
+}
+
+.lb-bell-elegant {
+  float: right;
+  width: 28px;
+  height: 28px;
+  margin: -4px 0 0;
+}
+
+.lb-bell-elegant .lb-bell-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.lb-bell-smartpocket {
+  float: right;
+  margin: 2px 6px 0 0;
+}
+
+.lb-bell-fixed {
+  position: fixed;
+  z-index: 1000;
+  top: 8px;
+  right: 8px;
+  background-color: rgba(0, 0, 0, 0.55);
+  color: #fff;
+}
+
+.lb-bell-fixed:hover,
+.lb-bell-fixed:focus-visible,
+.lb-bell-fixed[aria-expanded="true"] {
+  background-color: rgba(0, 0, 0, 0.75);
+}
+
+/* --- the list -------------------------------------------------------------- */
+.lb-bell-panel {
+  position: absolute;
+  z-index: 10000;
+  box-sizing: border-box;
+  max-height: min(70vh, 560px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--lb-bell-line);
+  border-radius: 8px;
+  background: var(--lb-bell-bg, #fff);
+  color: var(--lb-bell-fg, #222);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+  font-size: 14px;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.lb-bell-panel[hidden] {
+  display: none;
+}
+
+.lb-bell-panel:focus {
+  outline: none;
+}
+
+.lb-bell-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--lb-bell-line);
+}
+
+.lb-bell-title {
+  flex: 1;
+  font-weight: bold;
+  font-size: 15px;
+}
+
+.lb-bell-panel button {
+  min-width: 0;
+  height: auto;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+  text-shadow: none;
+  cursor: pointer;
+}
+
+.lb-bell-markall {
+  padding: 2px 4px;
+  color: var(--lb-bell-unread) !important;
+  font-size: 13px !important;
+}
+
+.lb-bell-markall:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.lb-bell-close {
+  display: none;
+  width: 32px;
+  padding: 0;
+  font-size: 24px !important;
+  line-height: 1;
+}
+
+.lb-bell-list {
+  flex: 1;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lb-bell-entry {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  border-bottom: 1px solid var(--lb-bell-line);
+}
+
+.lb-bell-entry:last-child {
+  border-bottom: 0;
+}
+
+.lb-bell-entry.is-unread {
+  background: var(--lb-bell-unread-bg);
+}
+
+.lb-bell-link {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px 12px;
+  color: inherit !important;
+  text-decoration: none !important;
+}
+
+.lb-bell-link:hover,
+.lb-bell-link:focus-visible {
+  background: rgba(128, 128, 128, 0.12);
+}
+
+.lb-bell-thumb {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.lb-bell-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lb-bell-text {
+  overflow-wrap: anywhere;
+}
+
+.lb-bell-text strong {
+  font-weight: bold;
+}
+
+.lb-bell-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.lb-bell-totals {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.lb-bell-total {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.lb-bell-total svg {
+  display: block;
+}
+
+.lb-bell-dot {
+  flex: none;
+  width: 32px;
+  height: 32px !important;
+  margin-right: 6px !important;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.lb-bell-dot::before {
+  content: "";
+  display: block;
+  width: 10px;
+  height: 10px;
+  margin: auto;
+  border-radius: 50%;
+  background: var(--lb-bell-unread);
+}
+
+.lb-bell-dot:hover,
+.lb-bell-dot:focus-visible {
+  background: rgba(128, 128, 128, 0.2) !important;
+}
+
+.lb-bell-message {
+  padding: 16px 12px;
+  opacity: 0.75;
+}
+
+.lb-bell-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* phones: the list fills the screen */
+@media (max-width: 575px) {
+  .lb-bell-panel {
+    position: fixed;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100%;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .lb-bell-close {
+    display: block;
+  }
+
+  html.lb-bell-open,
+  html.lb-bell-open body {
+    overflow: hidden;
+  }
+}
