@@ -638,6 +638,46 @@ conf_update_param('like_bravo_feedback_since', '2099-01-01 00:00:00', true);
 ok('member without "mark all as read": what came before the start of feedback is read', 0, like_bravo_feedback_unread_count($own));
 ok('a member without photos has no feedback', array(0, array()), array(like_bravo_feedback_unread_count($ca), like_bravo_feedback_list($ca)['entries']));
 
+echo "== 17. web service of the feedback\n";
+include_once(LIKE_BRAVO_PATH.'include/feedback_ws.inc.php');
+$_SESSION = array();
+conf_update_param('like_bravo_feedback_since', '2026-01-01 00:00:00', true);
+single_insert(COMMENTS_TABLE, array('image_id'=>$a, 'date'=>'2026-11-20 06:00:00', 'author'=>'lb_test_alice', 'author_id'=>$al, 'anonymous_id'=>'203.0.113',
+  'content'=>'lb_test_ Tom & Jerry <b>bold</b> "quoted"', 'validated'=>'true', 'validation_date'=>'2026-11-20 05:00:00'));
+$cm['escape'] = (int)pwg_db_insert_id(COMMENTS_TABLE);
+
+visitor($guest, '198.51.100.7');
+ok('guests have no feedback', 'error 401', ws_feedback('list'));
+visitor($own, '203.0.113.23');
+ok('a wrong token is refused', array('error 403', 'error 403', 'error 403'),
+  array(ws_feedback('list', array(), 'wrong'), ws_feedback('read', array('kind'=>'vote', 'ref_id'=>$a, 'rater_id'=>$al), 'wrong'), ws_feedback('all', array(), 'wrong')));
+$r = ws_feedback('list');
+ok('list: same entries as the data layer, and the unread count', array(count(like_bravo_feedback_list($own)['entries']), like_bravo_feedback_unread_count($own)),
+  array(count($r['entries']), $r['unread']));
+$first = $r['entries'][0];
+ok('text of a like: the name in bold, as the language file says', sprintf(htmlspecialchars(l10n('%s likes your photo')), '<strong>lb_test_karl</strong>'), $first['html']);
+ok('photo page as full URL, square thumbnail, alt text', array(true, true, true, true),
+  array(0 === strpos($first['url'], 'http'), false !== strpos($first['url'], 'picture.php?/'.$a), false !== strpos($first['thumb'], '-sq.'), '' !== $first['thumb_alt']));
+ok('totals of the photo with a text for screen readers', array(true, true, true),
+  array(isset($first['likes'], $first['bravos']), $first['with_bravo'], '' !== $first['totals_text']));
+$escaped = array_values(array_filter($r['entries'], function($e) use ($cm) { return 'comment' === $e['kind'] and $e['key']['ref_id'] == $cm['escape']; }))[0];
+ok('comment: escaped excerpt in italics, link to the comments', array(true, true),
+  array(false !== strpos($escaped['html'], '<em>lb_test_ Tom &amp; Jerry bold &quot;quoted&quot;</em>'), '#comments' === substr($escaped['url'], -9)));
+ok('older entries show a date', format_date('2026-11-20 05:00:00', array('day', 'month', 'year')), $escaped['when']);
+ok('icons of like and bravo come along', array(true, true), array(0 === strpos($r['icons']['like'], '<svg'), 0 === strpos($r['icons']['bravo'], '<svg')));
+ok('filters: unread only, comments only', array(true, array('comment')),
+  array(count(ws_feedback('list', array('unread'=>true))['entries']) == $r['unread'], array_values(array_unique(array_column(ws_feedback('list', array('kind'=>'comments'))['entries'], 'kind')))));
+
+$before = like_bravo_feedback_badge_count($own);
+$read = ws_feedback('read', array('kind'=>$first['key']['kind'], 'ref_id'=>$first['key']['ref_id'], 'rater_id'=>$first['key']['rater_id'], 'rater_anonymous_id'=>$first['key']['rater_anonymous_id']));
+ok('mark read: one unread less, also for the bell', array($before - 1, $before - 1), array($read['unread'], like_bravo_feedback_badge_count($own)));
+ok('mark read: unknown entry, unknown kind', array('error 404', 'error 404'),
+  array(ws_feedback('read', array('kind'=>'vote', 'ref_id'=>$b, 'rater_id'=>$bo)), ws_feedback('read', array('kind'=>'image', 'ref_id'=>$a))));
+visitor($bo, '203.0.113.22'); ws_vote($a, 'bravo'); visitor($own, '203.0.113.23');
+ok('the bell keeps its number for a minute, a fresh count sees the new bravo', array($before - 1, $before), array(like_bravo_feedback_badge_count($own), like_bravo_feedback_badge_count($own, 0)));
+ok('mark all as read', array(0, 0), array(ws_feedback('all')['unread'], like_bravo_feedback_badge_count($own)));
+$_SESSION = array();
+
 $conf['rate_anonymous'] = $rate_anonymous_before;
 mode($t1, null);
 
@@ -705,3 +745,9 @@ function insert_row($table, $row) { // single_insert() would store '' as NULL
 function fb_sig($owner, $page = 1, $per_page = 20, $unread = false, $kind = 'all') { // "kind|who|name|photo[|unread]" of each entry
   return array_map(function($e) { return $e['kind'].'|'.$e['who'].'|'.$e['name'].'|'.$e['image_id'].($e['unread'] ? '|unread' : ''); },
     like_bravo_feedback_list($owner, $page, $per_page, $unread, $kind)['entries']); }
+function ws_feedback($method, $params = array(), $token = null) { // feedback methods as the current visitor, with the defaults of the service
+  $defaults = array('list' => array('page'=>1, 'per_page'=>20, 'unread'=>false, 'kind'=>'all'), 'read' => array('rater_id'=>0, 'rater_anonymous_id'=>''), 'all' => array());
+  $functions = array('list' => 'like_bravo_ws_feedback_list', 'read' => 'like_bravo_ws_feedback_mark_read', 'all' => 'like_bravo_ws_feedback_mark_all_read');
+  $params = array_merge($defaults[$method], $params, array('pwg_token' => null === $token ? get_pwg_token() : $token)); $service = null;
+  $r = @$functions[$method]($params, $service); // @: PwgError sets an HTTP status, impossible on the command line
+  return $r instanceof PwgError ? 'error '.$r->code() : $r; }

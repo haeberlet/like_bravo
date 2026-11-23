@@ -1046,3 +1046,60 @@ function like_bravo_feedback_who($is_guest, $name, $names_visible)
 
   return array('who' => 'member', 'name' => (string)$name);
 }
+
+/**
+ * How long ago an entry of the feedback is, for a short text: under a
+ * minute "just now", then minutes, then hours up to a day, then "yesterday"
+ * for the day before, else the date. Votes from before the plugin kept
+ * their time (date only) show "today", "yesterday" or the date.
+ *
+ * Both times come from the database, so that their time zones agree.
+ *
+ * @param string $time 'Y-m-d H:i:s'
+ * @param string $now 'Y-m-d H:i:s'
+ * @param bool $date_only
+ * @return array 'unit' => 'now', 'minutes', 'hours', 'today', 'yesterday'
+ *    or 'date'; 'value' => number of minutes or hours, else 0
+ */
+function like_bravo_feedback_when($time, $now, $date_only=false)
+{
+  $then = strtotime((string)$time);
+  $current = strtotime((string)$now);
+  if (false === $then or false === $current)
+  {
+    return array('unit' => 'date', 'value' => 0);
+  }
+
+  $day = date('Y-m-d', $then);
+  $today = date('Y-m-d', $current);
+  $yesterday = date('Y-m-d', strtotime($today.' -1 day'));
+
+  if ($date_only)
+  {
+    if ($day === $today)
+    {
+      return array('unit' => 'today', 'value' => 0);
+    }
+    return array('unit' => $day === $yesterday ? 'yesterday' : 'date', 'value' => 0);
+  }
+
+  $seconds = max(0, $current - $then);
+  if ($seconds < 60)
+  {
+    return array('unit' => 'now', 'value' => 0);
+  }
+  if ($seconds < 3600)
+  {
+    return array('unit' => 'minutes', 'value' => intdiv($seconds, 60));
+  }
+  if ($seconds < 86400)
+  {
+    return array('unit' => 'hours', 'value' => intdiv($seconds, 3600));
+  }
+  if ($day === $yesterday)
+  {
+    return array('unit' => 'yesterday', 'value' => 0);
+  }
+
+  return array('unit' => 'date', 'value' => 0);
+}

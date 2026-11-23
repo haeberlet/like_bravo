@@ -2,6 +2,7 @@
 defined('PHPWG_ROOT_PATH') or die('Hacking attempt!');
 
 include_once(LIKE_BRAVO_PATH . 'include/voters.inc.php');
+include_once(LIKE_BRAVO_PATH . 'include/feedback_ws.inc.php');
 
 /**
  * Event handler: registers the web service methods of the plugin.
@@ -33,6 +34,8 @@ function like_bravo_ws_add_methods($arr)
       ),
     'Returns the names of the members who voted for a photo, if the plugin settings let the current visitor see them.'
     );
+
+  like_bravo_feedback_ws_add_methods($service);
 }
 
 /**

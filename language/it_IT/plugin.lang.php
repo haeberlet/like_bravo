@@ -80,3 +80,23 @@ $lang['Filter: photos I gave a bravo'] = 'Filtro: foto a cui ho dato un bravo';
 $lang['Filter: photos without my like or bravo'] = 'Filtro: foto senza il mio like né il mio bravo';
 $lang['No photos match the filter.'] = 'Nessuna foto corrisponde al filtro.';
 $lang['Filter'] = 'Filtro';
+
+// feedback for owners (the bell)
+$lang['%s likes your photo'] = 'A %s piace la tua foto';
+$lang['A guest likes your photo'] = 'A un visitatore piace la tua foto';
+$lang['A former member likes your photo'] = 'A un ex membro piace la tua foto';
+$lang['Your photo got a like'] = 'La tua foto ha ricevuto un like';
+$lang['%s gave your photo a bravo'] = '%s ha dato un bravo alla tua foto';
+$lang['A guest gave your photo a bravo'] = 'Un visitatore ha dato un bravo alla tua foto';
+$lang['A former member gave your photo a bravo'] = 'Un ex membro ha dato un bravo alla tua foto';
+$lang['Your photo got a bravo'] = 'La tua foto ha ricevuto un bravo';
+$lang['%s commented on your photo:'] = '%s ha commentato la tua foto:';
+$lang['A guest commented on your photo:'] = 'Un visitatore ha commentato la tua foto:';
+$lang['A former member commented on your photo:'] = 'Un ex membro ha commentato la tua foto:';
+$lang['%s edited a comment on your photo:'] = '%s ha modificato un commento sulla tua foto:';
+$lang['A guest edited a comment on your photo:'] = 'Un visitatore ha modificato un commento sulla tua foto:';
+$lang['A former member edited a comment on your photo:'] = 'Un ex membro ha modificato un commento sulla tua foto:';
+$lang['just now'] = 'proprio ora';
+$lang['%d min ago'] = '%d min fa';
+$lang['%d h ago'] = '%d h fa';
+$lang['yesterday'] = 'ieri';

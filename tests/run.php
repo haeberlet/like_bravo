@@ -574,5 +574,17 @@ check('who: a member whose account is gone', array('who' => 'former', 'name' => 
 check('who: names hidden by "Names of voters"', array('who' => 'hidden', 'name' => null), like_bravo_feedback_who(false, 'Alice', false));
 check('who: names hidden, also for guests', array('who' => 'hidden', 'name' => null), like_bravo_feedback_who(true, null, false));
 
+$now = '2026-11-24 09:30:00';
+check('when: under a minute', array('unit' => 'now', 'value' => 0), like_bravo_feedback_when('2026-11-24 09:29:10', $now));
+check('when: a time slightly ahead of the database is "now"', array('unit' => 'now', 'value' => 0), like_bravo_feedback_when('2026-11-24 09:30:05', $now));
+check('when: minutes', array('unit' => 'minutes', 'value' => 59), like_bravo_feedback_when('2026-11-24 08:30:30', $now));
+check('when: hours, also into the day before', array('unit' => 'hours', 'value' => 23), like_bravo_feedback_when('2026-11-23 10:00:00', $now));
+check('when: yesterday, a day or more ago', array('unit' => 'yesterday', 'value' => 0), like_bravo_feedback_when('2026-11-23 08:00:00', $now));
+check('when: older is a date', array('unit' => 'date', 'value' => 0), like_bravo_feedback_when('2026-11-22 23:00:00', $now));
+check('when: date only, today', array('unit' => 'today', 'value' => 0), like_bravo_feedback_when('2026-11-24 00:00:00', $now, true));
+check('when: date only, yesterday', array('unit' => 'yesterday', 'value' => 0), like_bravo_feedback_when('2026-11-23 00:00:00', $now, true));
+check('when: date only, older', array('unit' => 'date', 'value' => 0), like_bravo_feedback_when('2026-11-12 00:00:00', $now, true));
+check('when: unreadable time', array('unit' => 'date', 'value' => 0), like_bravo_feedback_when('', $now));
+
 echo ($checks - $failures) . '/' . $checks . " checks passed\n";
 exit($failures > 0 ? 1 : 0);

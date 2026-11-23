@@ -415,3 +415,121 @@ INSERT INTO '.LIKE_BRAVO_FEEDBACK_USER_TABLE.'
 ;');
   pwg_query('DELETE FROM '.LIKE_BRAVO_FEEDBACK_READ_TABLE.' WHERE user_id = '.$owner_id.';');
 }
+
+/**
+ * Number of unread entries for the bell, kept in the session for a minute
+ * so that pages do not query on every call. Own read actions store the new
+ * number at once (like_bravo_feedback_store_count).
+ *
+ * @param int $owner_id
+ * @param int $max_age seconds
+ * @return int
+ */
+function like_bravo_feedback_badge_count($owner_id, $max_age=60)
+{
+  $cached = pwg_get_session_var('like_bravo_feedback_unread', null);
+  if (is_array($cached) and isset($cached['user'], $cached['count'], $cached['at'])
+      and (int)$cached['user'] === (int)$owner_id and time() - (int)$cached['at'] < $max_age)
+  {
+    return (int)$cached['count'];
+  }
+
+  return like_bravo_feedback_store_count($owner_id, like_bravo_feedback_unread_count($owner_id));
+}
+
+/**
+ * @param int $owner_id
+ * @param int $count
+ * @return int $count
+ */
+function like_bravo_feedback_store_count($owner_id, $count)
+{
+  pwg_set_session_var('like_bravo_feedback_unread', array('user' => (int)$owner_id, 'count' => (int)$count, 'at' => time()));
+
+  return (int)$count;
+}
+
+/**
+ * Text of an entry as HTML: the name in bold, the beginning of a comment in
+ * italics. Each case is a whole sentence of its own in the language files,
+ * because languages build them differently (German "gefallen" asks for the
+ * dative: "Einem Gast gefällt dein Foto").
+ *
+ * @param array $entry as like_bravo_feedback_entry()
+ * @return string
+ */
+function like_bravo_feedback_html($entry)
+{
+  $edited = ('comment' === $entry['kind'] and !empty($entry['edited']));
+
+  $keys = array(
+    'like' => array(
+      'member' => '%s likes your photo',
+      'guest' => 'A guest likes your photo',
+      'former' => 'A former member likes your photo',
+      'hidden' => 'Your photo got a like',
+      ),
+    'bravo' => array(
+      'member' => '%s gave your photo a bravo',
+      'guest' => 'A guest gave your photo a bravo',
+      'former' => 'A former member gave your photo a bravo',
+      'hidden' => 'Your photo got a bravo',
+      ),
+    'comment' => array(
+      'member' => '%s commented on your photo:',
+      'guest' => 'A guest commented on your photo:',
+      'former' => 'A former member commented on your photo:',
+      ),
+    'edited' => array(
+      'member' => '%s edited a comment on your photo:',
+      'guest' => 'A guest edited a comment on your photo:',
+      'former' => 'A former member edited a comment on your photo:',
+      ),
+    );
+
+  $group = $edited ? 'edited' : $entry['kind'];
+  $who = isset($keys[$group][$entry['who']]) ? $entry['who'] : 'former';
+  $html = htmlspecialchars(l10n($keys[$group][$who]));
+
+  if ('member' === $who)
+  {
+    $html = sprintf($html, '<strong>'.htmlspecialchars($entry['name']).'</strong>');
+  }
+
+  if ('comment' === $entry['kind'])
+  {
+    $html.= ' <em>'.htmlspecialchars($entry['excerpt']).'</em>';
+  }
+
+  return $html;
+}
+
+/**
+ * Short text for the time of an entry: "just now", "5 min ago", "2 h ago",
+ * "today", "yesterday" or the date.
+ *
+ * @param string $time
+ * @param string $now from the database, see like_bravo_feedback_when()
+ * @param bool $date_only
+ * @return string
+ */
+function like_bravo_feedback_when_text($time, $now, $date_only)
+{
+  $when = like_bravo_feedback_when($time, $now, $date_only);
+
+  switch ($when['unit'])
+  {
+    case 'now':
+      return l10n('just now');
+    case 'minutes':
+      return sprintf(l10n('%d min ago'), $when['value']);
+    case 'hours':
+      return sprintf(l10n('%d h ago'), $when['value']);
+    case 'today':
+      return l10n('today');
+    case 'yesterday':
+      return l10n('yesterday');
+    default:
+      return format_date($time, array('day', 'month', 'year'));
+  }
+}
