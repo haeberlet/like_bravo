@@ -91,6 +91,13 @@
   margin: -6px 8px -4px 0;
 }
 
+/* Modus takes the space after the first link of the line away
+   (#menubar dt a:first-child); with the bell in front, the name is no
+   longer the first child */
+#menubar dt > .lb-bell-modus:first-child + a {
+  padding-right: 0;
+}
+
 .lb-bell-elegant {
   float: right;
   width: 28px;

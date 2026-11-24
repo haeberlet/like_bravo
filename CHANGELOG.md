@@ -40,6 +40,23 @@ First public release, planned as 1.0.0.
   and next on the photo page.
 * Personal pages "My likes" and "My bravos" in the menu block "Explore".
 
+### Feedback bell
+
+* A bell on every page for signed-in members, with the number of unread likes,
+  bravos and comments on their own photos. Votes with stars do not count.
+* List of the latest feedback with thumbnail, text, time and the photo's totals;
+  older entries load while scrolling. Mark one entry or all as read.
+* Page "All feedback": a feed by day with an overview of the last 7 days,
+  filters (unread; likes and bravos; comments) and the photos with the most
+  feedback.
+* The thumbnail leads to the photo, the name of a member to their album of the
+  plugin Community.
+* Names follow the setting "Names of voters". A changed vote or an edited comment
+  is unread again.
+* Placed in the menu bar of Bootstrap Darkroom, Modus, Elegant and SmartPocket,
+  in the top right corner elsewhere. No settings, no emails.
+* After the update, all earlier feedback counts as read.
+
 ### Settings
 
 * Icons for Like, Bravo and "Remove my vote" from a built-in set.

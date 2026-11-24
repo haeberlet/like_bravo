@@ -8,6 +8,9 @@ It is built on Piwigo's own rating system: votes are stored as ordinary ratings,
 "Best rated" keeps working, and an album can be switched between stars and likes
 at any time without losing a vote.
 
+Members also get a bell that tells them who liked their photos, gave them a bravo
+or commented on them.
+
 * Internal name: `like_bravo` (directory name in `plugins/`)
 * Requires Piwigo 16 or later, PHP 8
 * Languages: English, German, French, Spanish, Italian
@@ -67,6 +70,59 @@ In the collapsed menu of narrow windows, the group sits on one line headed
 
 The menu block "Explore" gets two personal pages for signed-in members: "My likes"
 and "My bravos", with the latest votes first.
+
+## Feedback bell
+
+Signed-in members see a bell on every page of the gallery. Its red number counts
+the likes, bravos and comments that others gave to their photos and that they have
+not read yet. A photo belongs to the member who added it, for example with the
+plugin Community.
+
+A click on the bell opens the latest feedback, newest first. Older entries load
+while scrolling. Each entry has the thumbnail of the photo and one line of text,
+followed by the time and the photo's current likes and bravos:
+
+* "Anna likes your photo" / "Anna gave your photo a bravo"
+* "Ben commented on your photo: Lovely light in the …" (the beginning of the
+  comment)
+* "Ben edited a comment on your photo: …"
+
+![The open list of the bell in the theme Bootstrap Darkroom, with read and unread entries](docs/screenshots/bell.png)
+
+Unread entries have a blue dot and a light background. A click on the thumbnail
+opens the photo page (for a comment, at the comments) and marks the entry as
+read. So does a click on the dot, without leaving the list. "Mark all as read"
+marks everything at once. A click on the name of a member opens their own album
+of the plugin Community, if there is one with photos the owner may see.
+
+The link "All feedback" at the bottom of the list leads to a page with all
+feedback without an age limit. It is a feed under the headings Today, Yesterday,
+This week and Earlier. Next to the feed are an overview of the last 7 days, the
+filters All entries / Unread and All kinds / Likes and bravos / Comments, and the
+photos with the most feedback. On phones these sit above the feed.
+
+![Page "All feedback": the feed under the heading Today, next to it the overview, the filters and the photos with the most feedback](docs/screenshots/feedback-page.png)
+
+What counts:
+
+* Of the votes, only likes and bravos. Votes with Piwigo's stars, or on photos
+  without rating, do not appear. Comments appear on all photos.
+* A changed vote and an edited comment are unread again. A vote taken back, a
+  deleted comment or photo disappear. Comments that need approval appear once
+  they are approved.
+* A member's own votes and comments on their own photos do not appear.
+* Names follow the setting "Names of voters". Shown "to signed-in members" or "to
+  all visitors", members see in the bell who liked their photos or gave them a
+  bravo. Shown "to nobody", the entry says "Your photo got a like" or "Your photo
+  got a bravo" without a name. Comments always
+  show their author. Guests appear as "a guest", votes of deleted members as "a
+  former member".
+* When the plugin is installed or updated, all feedback given before counts as
+  read, so the bell starts at zero.
+
+The bell finds its place in the menu bar of Bootstrap Darkroom, Modus, Elegant and
+SmartPocket. In other themes, and where the theme hides its menu, it sits in the
+top right corner of the window. It has no settings and sends no emails.
 
 ## Requirements
 
@@ -156,9 +212,11 @@ switched, is in [docs/rating.md](docs/rating.md).
 
 * **Deactivating** hands all scores back to Piwigo. Likes then count as a rating
   of 2 and bravos as a rating of 4. The album settings are kept, and activating
-  the plugin again restores the like scores.
-* **Uninstalling** also removes the album settings and the plugin configuration.
-  The votes stay in Piwigo's rating table.
+  the plugin again restores the like scores. The bell disappears; what has been
+  read is kept.
+* **Uninstalling** also removes the album settings, the plugin configuration and
+  what the bell needs: the time of day of the votes and what has been read. The
+  votes stay in Piwigo's rating table, the comments in Piwigo's comments.
 
 ## Known limitations
 
@@ -172,6 +230,11 @@ switched, is in [docs/rating.md](docs/rating.md).
 * Without captions below the thumbnails there are no likes and bravos on them,
   for example in Modus with square thumbnails, where the theme switches the
   captions off. Votes are then given on the photo page.
+* The bell knows the owner of a photo from Piwigo's field "added by". Photos the
+  webmaster uploads for others belong to the webmaster, and so does their
+  feedback.
+* Piwigo keeps only the day of a vote. The plugin notes the time itself, from its
+  installation on; older votes show their day only.
 * The French, Spanish and Italian texts have not been reviewed by native
   speakers. Corrections are welcome.
 
