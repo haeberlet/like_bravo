@@ -567,6 +567,7 @@ check('excerpt: one line, no tags', 'Schönes Licht und tolle Farben', like_brav
 check('excerpt: cut at a word boundary', 'Das Licht im Hintergrund ist wunderbar und die Farben…',
   like_bravo_excerpt('Das Licht im Hintergrund ist wunderbar und die Farben leuchten richtig schön warm.'));
 check('excerpt: multibyte characters are not split', 'ÄÖÜäöüß…', like_bravo_excerpt('ÄÖÜäöüßÄÖÜäöüß', 7));
+check('excerpt: emoji are not split', '📷🌅📷…', like_bravo_excerpt('📷🌅📷🌅📷🌅', 3));
 
 $cursor_key = array('kind' => 'vote', 'ref_id' => 43, 'rater_id' => 2, 'rater_anonymous_id' => '192.168.7');
 check('cursor: time and read key in one string', '2026-11-24 09:33:49|vote|43|2|192.168.7', like_bravo_feedback_cursor_text('2026-11-24 09:33:49', $cursor_key));
