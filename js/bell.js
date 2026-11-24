@@ -9,7 +9,9 @@ var LikeBravoBell = (function() {
     + '<path d="M18 16v-5a6 6 0 0 0-5-5.9V4a1 1 0 0 0-2 0v1.1A6 6 0 0 0 6 11v5l-2 2v1h16v-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>'
     + '<path d="M10 20a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
 
-  var cfg, button, badge, panel, list, markAll, count = 0, request = 0, icons = null;
+  var cfg, button, badge, panel, list, count = 0, request = 0, icons = null;
+  var bellMore = null; // loading of older entries in the list of the bell
+  var markAlls = []; // buttons "Mark all as read": in the list of the bell and on the page
 
   function text(key) {
     return cfg.strings[key] || '';
@@ -63,14 +65,23 @@ var LikeBravoBell = (function() {
     var label = count > 0 ? text('unread_count').replace('%d', count) : text('title');
     button.setAttribute('aria-label', label);
     button.title = label;
-    if (markAll) {
-      markAll.disabled = count === 0;
+    for (var i = 0; i < markAlls.length; i++) {
+      markAlls[i].disabled = count === 0;
+    }
+    // numbers of unread entries on the page "All feedback"
+    var numbers = document.querySelectorAll('[data-lb-unread]');
+    for (var j = 0; j < numbers.length; j++) {
+      numbers[j].textContent = String(count);
     }
   }
 
   // --- the list --------------------------------------------------------------
   function load() {
     var current = ++request;
+    if (bellMore) {
+      bellMore.stop();
+      bellMore = null;
+    }
     list.setAttribute('aria-busy', 'true');
 
     call('likeBravo.feedbackList', {per_page: 20}, false)
@@ -81,6 +92,18 @@ var LikeBravoBell = (function() {
         icons = result.icons;
         render(result.entries);
         setCount(result.unread);
+        if (result.has_more && result.entries.length) {
+          // older entries while scrolling down the list
+          var sentinel = el('li', 'lb-bell-more');
+          list.appendChild(sentinel);
+          bellMore = moreLoader({
+            box: list,
+            sentinel: sentinel,
+            scroller: list,
+            fields: {per_page: 20},
+            append: function(item, li) { list.insertBefore(li, sentinel); }
+          });
+        }
       })
       .catch(function() {
         if (current === request) {
@@ -121,20 +144,24 @@ var LikeBravoBell = (function() {
     return box;
   }
 
+  // the thumbnail leads to the photo, the name of a member (in the text from
+  // the server) to his home album; the rest of the entry is no link
   function entry(item) {
     var li = el('li', 'lb-bell-entry' + (item.unread ? ' is-unread' : ''));
     li.dataset.key = JSON.stringify(item.key);
+    li.dataset.cursor = item.cursor;
 
-    var link = el('a', 'lb-bell-link');
-    link.href = item.url;
-
+    var photo = el('a', 'lb-bell-photo');
+    photo.href = item.url;
+    photo.setAttribute('data-ajax', 'false'); // SmartPocket: no AJAX page load
     var img = el('img', 'lb-bell-thumb');
     img.src = item.thumb;
     img.alt = item.thumb_alt;
     img.width = 48;
     img.height = 48;
     img.loading = 'lazy';
-    link.appendChild(img);
+    photo.appendChild(img);
+    li.appendChild(photo);
 
     var body = el('span', 'lb-bell-body');
     var line = el('span', 'lb-bell-text');
@@ -147,17 +174,16 @@ var LikeBravoBell = (function() {
       meta.appendChild(el('span', 'lb-bell-sep', '·'));
       meta.appendChild(totals(item));
     }
-    body.appendChild(meta);
-    link.appendChild(body);
-
     if (item.unread) {
-      link.appendChild(el('span', 'lb-bell-sr', text('unread')));
+      meta.appendChild(el('span', 'lb-bell-sr lb-bell-unread-sr', text('unread')));
     }
-    li.appendChild(link);
+    body.appendChild(meta);
+    li.appendChild(body);
 
     if (item.unread) {
       var dot = el('button', 'lb-bell-dot');
       dot.type = 'button';
+      dot.setAttribute('data-role', 'none');
       dot.title = text('mark_one');
       dot.setAttribute('aria-label', text('mark_one'));
       li.appendChild(dot);
@@ -166,16 +192,27 @@ var LikeBravoBell = (function() {
     return li;
   }
 
-  function markRead(li, keepalive) {
-    var key = JSON.parse(li.dataset.key);
+  // shows an entry as read
+  function clearUnread(li) {
     li.classList.remove('is-unread');
     var dot = li.querySelector('.lb-bell-dot');
     if (dot) {
       dot.parentNode.removeChild(dot);
     }
-    var sr = li.querySelector('.lb-bell-link > .lb-bell-sr');
+    var sr = li.querySelector('.lb-bell-unread-sr');
     if (sr) {
       sr.parentNode.removeChild(sr);
+    }
+  }
+
+  // the same entry may be in the list of the bell and on the page
+  function markRead(li, keepalive) {
+    var key = JSON.parse(li.dataset.key);
+    var same = document.querySelectorAll('.lb-bell-entry.is-unread');
+    for (var i = 0; i < same.length; i++) {
+      if (same[i].dataset.key === li.dataset.key) {
+        clearUnread(same[i]);
+      }
     }
     setCount(count - 1);
 
@@ -185,22 +222,169 @@ var LikeBravoBell = (function() {
   }
 
   function markAllRead() {
-    var entries = list.querySelectorAll('.lb-bell-entry.is-unread');
+    var entries = document.querySelectorAll('.lb-bell-entry.is-unread');
     for (var i = 0; i < entries.length; i++) {
-      entries[i].classList.remove('is-unread');
-      var dot = entries[i].querySelector('.lb-bell-dot');
-      if (dot) {
-        dot.parentNode.removeChild(dot);
-      }
-      var sr = entries[i].querySelector('.lb-bell-link > .lb-bell-sr');
-      if (sr) {
-        sr.parentNode.removeChild(sr);
-      }
+      clearUnread(entries[i]);
     }
     setCount(0);
     call('likeBravo.feedbackMarkAllRead', {}, true)
       .then(function(result) { setCount(result.unread); })
       .catch(function() {});
+  }
+
+  // --- older entries while scrolling ----------------------------------------
+  // In the list of the bell and on the page "All feedback": when the sentinel
+  // at the end comes near, the entries older than the last one are loaded,
+  // until the list is full and while scrolling on.
+  //   box: element with the entries; sentinel: element after them;
+  //   scroller: the scrolling element, null for the window;
+  //   fields: parameters of likeBravo.feedbackList besides the cursor;
+  //   append(item, li): puts a new entry in place; failed(cursor): optional
+  function moreLoader(options) {
+    if (!('IntersectionObserver' in window)) {
+      options.sentinel.parentNode.removeChild(options.sentinel);
+      return {stop: function() {}};
+    }
+    var busy = false, stopped = false;
+    var status = el('span', 'lb-feedback-loading');
+    status.setAttribute('role', 'status');
+    options.sentinel.appendChild(status);
+
+    function near() {
+      var bottom = options.scroller ? options.scroller.getBoundingClientRect().bottom : window.innerHeight;
+      return options.sentinel.getBoundingClientRect().top < bottom + 300;
+    }
+
+    function stop() {
+      stopped = true;
+      observer.disconnect();
+      if (options.sentinel.parentNode) {
+        options.sentinel.parentNode.removeChild(options.sentinel);
+      }
+    }
+
+    function loadMore() {
+      var entries = options.box.querySelectorAll('.lb-bell-entry');
+      var last = entries.length ? entries[entries.length - 1] : null;
+      if (busy || stopped || !last) {
+        return;
+      }
+      busy = true;
+      status.textContent = text('loading');
+      options.box.setAttribute('aria-busy', 'true');
+
+      var fields = {before: last.dataset.cursor};
+      for (var name in options.fields) {
+        fields[name] = options.fields[name];
+      }
+      call('likeBravo.feedbackList', fields, false)
+        .then(function(result) {
+          if (stopped) {
+            return;
+          }
+          icons = result.icons;
+          var shown = {}, all = options.box.querySelectorAll('.lb-bell-entry');
+          for (var i = 0; i < all.length; i++) {
+            shown[all[i].dataset.key] = true;
+          }
+          for (var j = 0; j < result.entries.length; j++) {
+            if (!shown[JSON.stringify(result.entries[j].key)]) {
+              options.append(result.entries[j], entry(result.entries[j]));
+            }
+          }
+          setCount(result.unread);
+          status.textContent = '';
+          busy = false;
+          if (!result.has_more || !result.entries.length) {
+            stop();
+          }
+          else if (near()) {
+            loadMore(); // the list is not full yet
+          }
+        })
+        .catch(function() {
+          if (stopped) {
+            return;
+          }
+          status.textContent = text('error');
+          observer.disconnect();
+          if (options.failed) {
+            options.failed(last.dataset.cursor);
+          }
+        })
+        .then(function() {
+          options.box.removeAttribute('aria-busy');
+        });
+    }
+
+    var observer = new IntersectionObserver(function(changes) {
+      if (changes[changes.length - 1].isIntersecting) {
+        loadMore();
+      }
+    }, {root: options.scroller, rootMargin: '0px 0px 300px 0px'});
+    observer.observe(options.sentinel);
+
+    return {stop: stop};
+  }
+
+  // the page "All feedback": the entries under headings of days; instead of
+  // the link "Older" (for browsers without JavaScript) they load on scrolling
+  function pageMore(feed, more) {
+    var link = more.querySelector('a[rel="next"]');
+    if (!link || !('IntersectionObserver' in window)) {
+      return;
+    }
+    var days = {};
+    try {
+      days = JSON.parse(feed.dataset.days || '{}');
+    }
+    catch (e) {}
+    link.hidden = true;
+
+    // the list of the day of the entry: the last one, or a new one under its heading
+    function listOf(item) {
+      var lists = feed.querySelectorAll('.lb-feedback-list');
+      var current = lists.length ? lists[lists.length - 1] : null;
+      if (current && current.dataset.day === item.day) {
+        return current;
+      }
+      feed.appendChild(el('h3', 'lb-feedback-day', days[item.day] || ''));
+      var next = el('ul', 'lb-bell-list lb-feedback-list');
+      next.dataset.day = item.day;
+      feed.appendChild(next);
+      return next;
+    }
+
+    moreLoader({
+      box: feed,
+      sentinel: more,
+      scroller: null,
+      fields: {
+        per_page: feed.dataset.perPage || 20,
+        unread: feed.dataset.unread || 'false',
+        kind: feed.dataset.kind || 'all'
+      },
+      append: function(item, li) { listOf(item).appendChild(li); },
+      failed: function(cursor) {
+        // the link stays as a way on
+        link.href = link.href.replace(/([?&](?:amp;)?before=)[^&]*/, '$1' + encodeURIComponent(cursor));
+        link.hidden = false;
+      }
+    });
+  }
+
+  // the side column stays in view while scrolling, below the bars that some
+  // themes keep at the top of the window
+  function sideTop(page) {
+    var bottom = 0;
+    var bars = document.querySelectorAll('header, nav, .navbar, .sticky-top, .fixed-top, [data-role="header"]');
+    for (var i = 0; i < bars.length; i++) {
+      var style = window.getComputedStyle(bars[i]);
+      if ((style.position === 'sticky' || style.position === 'fixed') && parseFloat(style.top) <= 1 && visible(bars[i])) {
+        bottom = Math.max(bottom, bars[i].offsetHeight + Math.max(0, parseFloat(style.top) || 0));
+      }
+    }
+    page.style.setProperty('--lb-feedback-top', bottom + 16 + 'px');
   }
 
   // --- opening and closing ---------------------------------------------------
@@ -302,9 +486,41 @@ var LikeBravoBell = (function() {
     button.classList.add('lb-bell-fixed');
   }
 
+  function bindList(target) {
+    if (!target) {
+      return;
+    }
+    target.addEventListener('click', function(event) {
+      var li = event.target.closest('.lb-bell-entry');
+      if (!li) {
+        return;
+      }
+      if (event.target.closest('.lb-bell-dot')) {
+        // the dot leaves the page: the click must not count as one outside the list
+        event.stopPropagation();
+        markRead(li, false);
+        return;
+      }
+      // the photo or the home album of the member
+      var link = event.target.closest('a[href]');
+      if (!link || !li.contains(link) || !li.classList.contains('is-unread')) {
+        return;
+      }
+      // a new tab or window: mark read and stay
+      if (event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1) {
+        markRead(li, true);
+        return;
+      }
+      event.preventDefault();
+      var go = function() { window.location.href = link.href; };
+      markRead(li, true).then(go, go);
+    });
+  }
+
   function build() {
     button = el('button', 'lb-bell-button');
     button.type = 'button';
+    button.setAttribute('data-role', 'none'); // SmartPocket: no restyling by jQuery Mobile
     button.innerHTML = BELL;
     button.setAttribute('aria-haspopup', 'dialog');
     button.setAttribute('aria-expanded', 'false');
@@ -319,8 +535,9 @@ var LikeBravoBell = (function() {
 
     var head = el('div', 'lb-bell-head');
     head.appendChild(el('span', 'lb-bell-title', text('title')));
-    markAll = el('button', 'lb-bell-markall', text('mark_all'));
+    var markAll = el('button', 'lb-bell-markall', text('mark_all'));
     markAll.type = 'button';
+    markAlls.push(markAll);
     head.appendChild(markAll);
     var closer = el('button', 'lb-bell-close');
     closer.type = 'button';
@@ -332,7 +549,32 @@ var LikeBravoBell = (function() {
 
     list = el('ul', 'lb-bell-list');
     panel.appendChild(list);
+    if (cfg.all_url) {
+      var foot = el('div', 'lb-bell-foot');
+      var all = el('a', 'lb-bell-all', text('all'));
+      all.href = cfg.all_url;
+      all.setAttribute('data-ajax', 'false');
+      foot.appendChild(all);
+      panel.appendChild(foot);
+    }
     document.body.appendChild(panel);
+
+    // the page "All feedback" has the same list
+    var page = document.querySelector('.lb-feedback-page');
+    if (page) {
+      var pageMarkAll = page.querySelector('.lb-bell-markall');
+      if (pageMarkAll) {
+        markAlls.push(pageMarkAll);
+        pageMarkAll.addEventListener('click', markAllRead);
+      }
+      var feed = page.querySelector('.lb-feedback-feed');
+      bindList(feed);
+      var more = page.querySelector('.lb-feedback-more');
+      if (feed && more) {
+        pageMore(feed, more);
+      }
+      sideTop(page);
+    }
 
     setCount(cfg.count);
     place();
@@ -350,30 +592,7 @@ var LikeBravoBell = (function() {
     markAll.addEventListener('click', markAllRead);
     closer.addEventListener('click', function() { close(true); });
 
-    list.addEventListener('click', function(event) {
-      var li = event.target.closest('.lb-bell-entry');
-      if (!li) {
-        return;
-      }
-      if (event.target.closest('.lb-bell-dot')) {
-        // the dot leaves the page: the click must not count as one outside the list
-        event.stopPropagation();
-        markRead(li, false);
-        return;
-      }
-      var link = event.target.closest('.lb-bell-link');
-      if (!link || !li.classList.contains('is-unread')) {
-        return;
-      }
-      // a new tab or window: mark read and stay
-      if (event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1) {
-        markRead(li, true);
-        return;
-      }
-      event.preventDefault();
-      var go = function() { window.location.href = link.href; };
-      markRead(li, true).then(go, go);
-    });
+    bindList(list);
 
     document.addEventListener('click', function(event) {
       if (isOpen() && event.target.isConnected && !panel.contains(event.target) && !button.contains(event.target)) {

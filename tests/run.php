@@ -568,6 +568,15 @@ check('excerpt: cut at a word boundary', 'Das Licht im Hintergrund ist wunderbar
   like_bravo_excerpt('Das Licht im Hintergrund ist wunderbar und die Farben leuchten richtig schön warm.'));
 check('excerpt: multibyte characters are not split', 'ÄÖÜäöüß…', like_bravo_excerpt('ÄÖÜäöüßÄÖÜäöüß', 7));
 
+$cursor_key = array('kind' => 'vote', 'ref_id' => 43, 'rater_id' => 2, 'rater_anonymous_id' => '192.168.7');
+check('cursor: time and read key in one string', '2026-11-24 09:33:49|vote|43|2|192.168.7', like_bravo_feedback_cursor_text('2026-11-24 09:33:49', $cursor_key));
+check('cursor: read back', array('time' => '2026-11-24 09:33:49') + $cursor_key, like_bravo_feedback_cursor('2026-11-24 09:33:49|vote|43|2|192.168.7'));
+check('cursor: a comment, no anonymous id', array('time' => '2026-11-20 05:00:00', 'kind' => 'comment', 'ref_id' => 7, 'rater_id' => 0, 'rater_anonymous_id' => ''),
+  like_bravo_feedback_cursor('2026-11-20 05:00:00|comment|7|0|'));
+check('cursor: empty or broken is none', array(null, null, null, null, null, null), array(like_bravo_feedback_cursor(''), like_bravo_feedback_cursor(null),
+  like_bravo_feedback_cursor('2026-11-20|vote|1|0|'), like_bravo_feedback_cursor('2026-11-20 05:00:00|image|1|0|'),
+  like_bravo_feedback_cursor("2026-11-20 05:00:00|vote|1' OR 1|0|"), like_bravo_feedback_cursor('2026-11-20 05:00:00|vote|1|0')));
+
 check('who: a member with name', array('who' => 'member', 'name' => 'Alice'), like_bravo_feedback_who(false, 'Alice', true));
 check('who: a guest', array('who' => 'guest', 'name' => null), like_bravo_feedback_who(true, 'guest', true));
 check('who: a member whose account is gone', array('who' => 'former', 'name' => null), like_bravo_feedback_who(false, null, true));
@@ -580,10 +589,17 @@ check('when: a time slightly ahead of the database is "now"', array('unit' => 'n
 check('when: minutes', array('unit' => 'minutes', 'value' => 59), like_bravo_feedback_when('2026-11-24 08:30:30', $now));
 check('when: hours, also into the day before', array('unit' => 'hours', 'value' => 23), like_bravo_feedback_when('2026-11-23 10:00:00', $now));
 check('when: yesterday, a day or more ago', array('unit' => 'yesterday', 'value' => 0), like_bravo_feedback_when('2026-11-23 08:00:00', $now));
-check('when: older is a date', array('unit' => 'date', 'value' => 0), like_bravo_feedback_when('2026-11-22 23:00:00', $now));
+check('when: in the last seven days is the weekday', array('unit' => 'week', 'value' => 0), like_bravo_feedback_when('2026-11-22 23:00:00', $now));
+check('when: the seventh day back is still in the week', array('unit' => 'week', 'value' => 0), like_bravo_feedback_when('2026-11-18 00:00:00', $now));
+check('when: older is a date', array('unit' => 'date', 'value' => 0), like_bravo_feedback_when('2026-11-17 23:59:59', $now));
 check('when: date only, today', array('unit' => 'today', 'value' => 0), like_bravo_feedback_when('2026-11-24 00:00:00', $now, true));
 check('when: date only, yesterday', array('unit' => 'yesterday', 'value' => 0), like_bravo_feedback_when('2026-11-23 00:00:00', $now, true));
+check('when: date only, in the week', array('unit' => 'week', 'value' => 0), like_bravo_feedback_when('2026-11-20 00:00:00', $now, true));
 check('when: date only, older', array('unit' => 'date', 'value' => 0), like_bravo_feedback_when('2026-11-12 00:00:00', $now, true));
+check('day groups: today, yesterday, the last seven days, earlier', array('today', 'today', 'yesterday', 'week', 'week', 'date', 'date'),
+  array(like_bravo_feedback_day('2026-11-24 00:00:00', $now), like_bravo_feedback_day('2026-11-24 09:30:05', $now), like_bravo_feedback_day('2026-11-23 23:59:59', $now),
+    like_bravo_feedback_day('2026-11-22 12:00:00', $now), like_bravo_feedback_day('2026-11-18 00:00:00', $now), like_bravo_feedback_day('2026-11-17 23:59:59', $now),
+    like_bravo_feedback_day('', $now)));
 check('when: unreadable time', array('unit' => 'date', 'value' => 0), like_bravo_feedback_when('', $now));
 
 echo ($checks - $failures) . '/' . $checks . " checks passed\n";

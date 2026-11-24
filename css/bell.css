@@ -203,12 +203,15 @@
   list-style: none;
 }
 
+/* an entry: the thumbnail leads to the photo, the name of a member to his
+   home album; the rest is no link */
 .lb-bell-entry {
   position: relative;
   display: flex;
   align-items: center;
+  gap: 10px;
   margin: 0;
-  padding: 0;
+  padding: 8px 6px 8px 12px;
   border-bottom: 1px solid var(--lb-bell-line);
 }
 
@@ -220,20 +223,20 @@
   background: var(--lb-bell-unread-bg);
 }
 
-.lb-bell-link {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  padding: 8px 12px;
-  color: inherit !important;
-  text-decoration: none !important;
+.lb-bell-photo {
+  flex: none;
+  display: block;
+  border-radius: 4px;
+  line-height: 0;
 }
 
-.lb-bell-link:hover,
-.lb-bell-link:focus-visible {
-  background: rgba(128, 128, 128, 0.12);
+.lb-bell-photo:hover .lb-bell-thumb {
+  opacity: 0.85;
+}
+
+.lb-bell-photo:focus-visible {
+  outline: 2px solid var(--lb-bell-unread);
+  outline-offset: 2px;
 }
 
 .lb-bell-thumb {
@@ -245,10 +248,22 @@
 }
 
 .lb-bell-body {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  padding-right: 6px;
+}
+
+.lb-bell-author {
+  color: inherit !important;
+  text-decoration: none !important;
+}
+
+.lb-bell-author:hover,
+.lb-bell-author:focus-visible {
+  text-decoration: underline !important;
 }
 
 .lb-bell-text {
@@ -287,7 +302,7 @@
   flex: none;
   width: 32px;
   height: 32px !important;
-  margin-right: 6px !important;
+  margin: 0 !important;
   padding: 0;
   border-radius: 50%;
 }
@@ -310,6 +325,14 @@
 .lb-bell-message {
   padding: 16px 12px;
   opacity: 0.75;
+}
+
+/* older entries while scrolling down the list */
+.lb-bell-more {
+  display: flex;
+  justify-content: center;
+  min-height: 32px;
+  padding: 8px 12px;
 }
 
 .lb-bell-sr {
@@ -342,4 +365,362 @@
   html.lb-bell-open body {
     overflow: hidden;
   }
+}
+
+/* --- link to the page "All feedback" at the foot of the list --------------- */
+.lb-bell-foot {
+  padding: 8px 12px;
+  border-top: 1px solid var(--lb-bell-line);
+  text-align: center;
+}
+
+.lb-bell-all {
+  color: var(--lb-bell-unread) !important;
+  font-size: 13px;
+}
+
+/* --- the page "All feedback": a feed in one column under headings of days,
+   with a side column on the right; on narrower screens the side column is a
+   strip above the feed ------------------------------------------------------ */
+.lb-feedback-page {
+  --lb-bell-badge: #d9363e;
+  --lb-bell-unread: #2e8fd8;
+  --lb-bell-unread-bg: rgba(46, 143, 216, 0.12);
+  --lb-bell-line: rgba(128, 128, 128, 0.35);
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 700px) 300px;
+  grid-template-areas: "main side";
+  justify-content: center;
+  align-items: start;
+  gap: 32px;
+  margin: 16px 0 32px;
+  padding: 0 16px;
+  font-size: 15px;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.lb-feedback-main {
+  grid-area: main;
+  min-width: 0;
+}
+
+.lb-feedback-side {
+  grid-area: side;
+  position: sticky;
+  top: var(--lb-feedback-top, 16px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.lb-feedback-box {
+  padding: 14px 16px;
+  border: 1px solid var(--lb-bell-line);
+  border-radius: 8px;
+}
+
+.lb-feedback-page h3.lb-feedback-boxtitle,
+.lb-feedback-page h3.lb-feedback-day {
+  margin: 0 0 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 13px;
+  font-weight: bold;
+  line-height: 1.3;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+/* overview */
+.lb-feedback-big {
+  font-size: 28px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.lb-feedback-week {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.lb-feedback-stats {
+  display: inline-flex;
+  gap: 14px;
+  font-size: 14px;
+}
+
+.lb-feedback-page .lb-bell-total svg {
+  display: block;
+}
+
+.lb-feedback-period {
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+/* filters */
+.lb-feedback-filter {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 12px;
+}
+
+.lb-feedback-filter a {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  color: inherit !important;
+  font-size: 14px;
+  text-decoration: none !important;
+}
+
+.lb-feedback-filter a:hover,
+.lb-feedback-filter a:focus-visible {
+  background: rgba(128, 128, 128, 0.15);
+}
+
+.lb-feedback-filter a.is-active {
+  background: rgba(128, 128, 128, 0.3);
+  font-weight: bold;
+}
+
+.lb-feedback-count {
+  font-weight: normal;
+  opacity: 0.6;
+}
+
+.lb-feedback-page .lb-bell-markall {
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+/* the photos with the most feedback */
+.lb-feedback-top ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lb-feedback-top a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  color: inherit !important;
+  text-decoration: none !important;
+}
+
+.lb-feedback-top img {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.lb-feedback-topbody {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 14px;
+}
+
+.lb-feedback-topname {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* the feed */
+.lb-feedback-page h3.lb-feedback-day {
+  margin: 22px 0 8px;
+}
+
+.lb-feedback-page h3.lb-feedback-day:first-child {
+  margin-top: 0;
+}
+
+.lb-feedback-list {
+  border: 1px solid var(--lb-bell-line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.lb-feedback-list .lb-bell-entry {
+  gap: 12px;
+  padding: 10px 8px 10px 14px;
+}
+
+.lb-feedback-list .lb-bell-thumb {
+  width: 56px;
+  height: 56px;
+}
+
+.lb-feedback-page .lb-bell-dot {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.lb-feedback-empty {
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--lb-bell-line);
+  border-radius: 8px;
+  opacity: 0.75;
+}
+
+.lb-feedback-newest,
+.lb-feedback-more a {
+  color: var(--lb-bell-unread) !important;
+  font-size: 14px;
+}
+
+.lb-feedback-newest {
+  display: inline-block;
+  margin-bottom: 12px;
+}
+
+.lb-feedback-more {
+  display: flex;
+  justify-content: center;
+  min-height: 40px;
+  padding: 12px 0;
+}
+
+.lb-feedback-loading {
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+@media (max-width: 1000px) {
+  .lb-feedback-page {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "side" "main";
+    gap: 12px;
+  }
+
+  .lb-feedback-side {
+    position: static;
+    gap: 10px;
+  }
+
+  .lb-feedback-top,
+  .lb-feedback-page h3.lb-feedback-boxtitle {
+    display: none;
+  }
+
+  /* overview in one line */
+  .lb-feedback-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px 12px;
+    padding: 10px 12px;
+  }
+
+  .lb-feedback-big {
+    font-size: 18px;
+  }
+
+  .lb-feedback-week {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+  }
+
+  .lb-feedback-stats {
+    gap: 10px;
+    font-size: 13px;
+  }
+
+  /* filters as two rows of chips */
+  .lb-feedback-filters {
+    padding: 0;
+    border: 0;
+  }
+
+  .lb-feedback-filter {
+    display: inline-flex;
+    flex-direction: row;
+    max-width: 100%;
+    margin: 0 6px 8px 0;
+    border: 1px solid var(--lb-bell-line);
+    border-radius: 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    vertical-align: top;
+  }
+
+  .lb-feedback-filter a {
+    border-radius: 0;
+    padding: 4px 10px;
+    white-space: nowrap;
+  }
+
+  .lb-feedback-filter a + a {
+    border-left: 1px solid var(--lb-bell-line);
+  }
+
+  .lb-feedback-count {
+    display: none;
+  }
+
+  .lb-feedback-page .lb-bell-markall {
+    display: block;
+  }
+}
+
+@media (max-width: 420px) {
+  /* the themes have a margin of their own on phones */
+  .lb-feedback-page {
+    padding: 0;
+  }
+
+  .lb-feedback-filter a {
+    padding: 4px 7px;
+    font-size: 12px;
+  }
+
+  .lb-feedback-list .lb-bell-entry {
+    gap: 10px;
+    padding: 8px 6px 8px 10px;
+  }
+
+  .lb-feedback-list .lb-bell-thumb {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+/* SmartPocket (jQuery Mobile) sets links in bold and shadows text */
+.lb-bell-panel,
+.lb-feedback-page {
+  text-shadow: none;
+}
+
+.lb-feedback-filter a,
+.lb-feedback-top a,
+.lb-bell-all {
+  font-weight: normal !important;
+}
+
+.lb-feedback-filter a.is-active {
+  font-weight: bold !important;
 }

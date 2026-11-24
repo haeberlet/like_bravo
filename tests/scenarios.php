@@ -60,7 +60,9 @@ $snap = array(
   'feedback' => array(),
   );
 foreach (feedback_tables() as $table) $snap['feedback'][$table] = query2array('SELECT * FROM '.$table);
-echo "snapshot: ".count($snap['rates'])." rates, ".count($snap['modes'])." modes\n";
+// also on disk: if the run dies while restoring, the data can still be put back by hand
+file_put_contents('/tmp/like_bravo_scenarios_snapshot.json', json_encode($snap));
+echo "snapshot: ".count($snap['rates'])." rates, ".count($snap['modes'])." modes, saved in /tmp/like_bravo_scenarios_snapshot.json\n";
 register_shutdown_function('restore_snapshot');
 pwg_query('DELETE FROM '.RATE_TABLE); pwg_query('DELETE FROM '.LIKE_BRAVO_MODES_TABLE); like_bravo_get_explicit_modes(true);
 conf_update_param('like_bravo', like_bravo_default_conf(), true);
@@ -610,6 +612,20 @@ ok('filter votes / comments', array(array('bravo', 'like'), array('comment')),
 $p1 = like_bravo_feedback_list($own, 1, 2); $p3 = like_bravo_feedback_list($own, 3, 2);
 ok('pages of 2: page 1 full with more, page 3 the last', array(2, true, 1, false), array(count($p1['entries']), $p1['has_more'], count($p3['entries']), $p3['has_more']));
 ok('pages together are the whole list', fb_sig($own), array_merge(fb_sig($own, 1, 2), fb_sig($own, 2, 2), fb_sig($own, 3, 2)));
+$all = like_bravo_feedback_list($own, 1, 50)['entries'];
+$after2 = like_bravo_feedback_cursor(like_bravo_feedback_cursor_text($all[1]['time'], $all[1]['read_key']));
+ok('cursor: the entries after the second are the rest of the list', array_slice(fb_sig($own, 1, 50), 2), fb_sig($own, 1, 50, false, 'all', $after2));
+$past_end = like_bravo_feedback_list($own, 1, 50, false, 'all', like_bravo_feedback_cursor(like_bravo_feedback_cursor_text(end($all)['time'], end($all)['read_key'])));
+ok('cursor after the last entry: nothing more', array(array(), false), array($past_end['entries'], $past_end['has_more']));
+$unread = like_bravo_feedback_list($own, 1, 50, true)['entries'];
+$u_rest = array_slice(fb_sig($own, 1, 50, true), 2);
+$u_key = $unread[0]['read_key'];
+like_bravo_feedback_mark_read($own, $u_key['kind'], $u_key['ref_id'], $u_key['rater_id'], $u_key['rater_anonymous_id']);
+ok('filter unread: one marked read on top, the cursor still skips nothing', $u_rest,
+  fb_sig($own, 1, 50, true, 'all', like_bravo_feedback_cursor(like_bravo_feedback_cursor_text($unread[1]['time'], $unread[1]['read_key']))));
+pwg_query('DELETE FROM '.LIKE_BRAVO_FEEDBACK_READ_TABLE.' WHERE user_id = '.$own." AND kind = '".$u_key['kind']."' AND ref_id = ".$u_key['ref_id']
+  .' AND rater_id = '.$u_key['rater_id']." AND rater_anonymous_id = '".pwg_db_real_escape_string($u_key['rater_anonymous_id'])."'");
+ok('the read mark of the test is gone again', count($unread), count(like_bravo_feedback_list($own, 1, 50, true)['entries']));
 
 mode($t1, LIKE_BRAVO_MODE_LIKE);
 ok('album switched to like only: Alice\'s bravo shows as a like', "like|member|lb_test_alice|$a|unread", fb_sig($own)[0]);
@@ -656,6 +672,32 @@ ok('list: same entries as the data layer, and the unread count', array(count(lik
   array(count($r['entries']), $r['unread']));
 $first = $r['entries'][0];
 ok('text of a like: the name in bold, as the language file says', sprintf(htmlspecialchars(l10n('%s likes your photo')), '<strong>lb_test_karl</strong>'), $first['html']);
+if (isset($pwg_loaded_plugins['community'])) {
+  // a home album of Karl (plugin Community): his name leads there; not to an album the owner may not see
+  $home = create_virtual_category('cl_test_home_karl')['id'];
+  pwg_query('UPDATE '.CATEGORIES_TABLE.' SET community_user = '.$ca.' WHERE id = '.$home);
+  associate_images_to_categories(array($a), array($home)); invalidate_user_cache(); // Piwigo hides empty albums from members
+  set_make_full_url();
+  $home_url = make_index_url(array('category' => array('id' => $home, 'name' => 'cl_test_home_karl', 'permalink' => null)));
+  unset_make_full_url();
+  visitor($own, '203.0.113.23'); $user = build_user($own, true); // with the albums he may not see, as on a real page
+  ok('the name of a member leads to his home album', sprintf(htmlspecialchars(l10n('%s likes your photo')), '<strong><a class="lb-bell-author" href="'.htmlspecialchars($home_url).'" data-ajax="false">lb_test_karl</a></strong>'),
+    ws_feedback('list')['entries'][0]['html']);
+  pwg_query('UPDATE '.CATEGORIES_TABLE.' SET status = \'private\' WHERE id = '.$home); invalidate_user_cache();
+  visitor($own, '203.0.113.23'); $user = build_user($own, true);
+  ok('no link to a home album the owner may not see', sprintf(htmlspecialchars(l10n('%s likes your photo')), '<strong>lb_test_karl</strong>'), ws_feedback('list')['entries'][0]['html']);
+  pwg_query('UPDATE '.CATEGORIES_TABLE.' SET community_user = NULL WHERE id = '.$home);
+  pwg_query('UPDATE '.CATEGORIES_TABLE.' SET status = \'public\' WHERE id = '.$home);
+  pwg_query('DELETE FROM '.IMAGE_CATEGORY_TABLE.' WHERE category_id = '.$home); invalidate_user_cache();
+  visitor($own, '203.0.113.23'); $user = build_user($own, true);
+  ok('no link to an empty home album: Piwigo hides it from members', sprintf(htmlspecialchars(l10n('%s likes your photo')), '<strong>lb_test_karl</strong>'), ws_feedback('list')['entries'][0]['html']);
+  associate_images_to_categories(array($a), array($home)); invalidate_user_cache();
+  visitor($own, '203.0.113.23'); $user = build_user($own, true);
+  ok('without a home album: no link', sprintf(htmlspecialchars(l10n('%s likes your photo')), '<strong>lb_test_karl</strong>'), ws_feedback('list')['entries'][0]['html']);
+}
+else {
+  echo "SKIP home albums: the plugin Community is not active\n";
+}
 ok('photo page as full URL, square thumbnail, alt text', array(true, true, true, true),
   array(0 === strpos($first['url'], 'http'), false !== strpos($first['url'], 'picture.php?/'.$a), false !== strpos($first['thumb'], '-sq.'), '' !== $first['thumb_alt']));
 ok('totals of the photo with a text for screen readers', array(true, true, true),
@@ -663,8 +705,18 @@ ok('totals of the photo with a text for screen readers', array(true, true, true)
 $escaped = array_values(array_filter($r['entries'], function($e) use ($cm) { return 'comment' === $e['kind'] and $e['key']['ref_id'] == $cm['escape']; }))[0];
 ok('comment: escaped excerpt in italics, link to the comments', array(true, true),
   array(false !== strpos($escaped['html'], '<em>lb_test_ Tom &amp; Jerry bold &quot;quoted&quot;</em>'), '#comments' === substr($escaped['url'], -9)));
-ok('older entries show a date', format_date('2026-11-20 05:00:00', array('day', 'month', 'year')), $escaped['when']);
+list($db_now) = pwg_db_fetch_row(pwg_query('SELECT NOW()'));
+ok('older entries show the weekday in the last seven days, else the date',
+  'week' === like_bravo_feedback_day('2026-11-20 05:00:00', $db_now)
+    ? sprintf(l10n('%1$s, %2$d %3$s'), $lang['day'][5], 20, $lang['month'][11])
+    : format_date('2026-11-20 05:00:00', array('day', 'month', 'year')),
+  $escaped['when']);
+ok('every entry knows its group of days', true, !in_array(false, array_map(function($e) { return in_array($e['day'], array('today', 'yesterday', 'week', 'date'), true); }, $r['entries'])));
 ok('icons of like and bravo come along', array(true, true), array(0 === strpos($r['icons']['like'], '<svg'), 0 === strpos($r['icons']['bravo'], '<svg')));
+$older = ws_feedback('list', array('before'=>$first['cursor']));
+ok('cursor of the first entry: the others, the first not again', array(count($r['entries']) - 1, false),
+  array(count($older['entries']), in_array($first['key'], array_column($older['entries'], 'key'))));
+ok('a broken cursor is refused', 'error '.WS_ERR_INVALID_PARAM, ws_feedback('list', array('before'=>'1|2')));
 ok('filters: unread only, comments only', array(true, array('comment')),
   array(count(ws_feedback('list', array('unread'=>true))['entries']) == $r['unread'], array_values(array_unique(array_column(ws_feedback('list', array('kind'=>'comments'))['entries'], 'kind')))));
 
@@ -677,6 +729,58 @@ visitor($bo, '203.0.113.22'); ws_vote($a, 'bravo'); visitor($own, '203.0.113.23'
 ok('the bell keeps its number for a minute, a fresh count sees the new bravo', array($before - 1, $before), array(like_bravo_feedback_badge_count($own), like_bravo_feedback_badge_count($own, 0)));
 ok('mark all as read', array(0, 0), array(ws_feedback('all')['unread'], like_bravo_feedback_badge_count($own)));
 $_SESSION = array();
+
+echo "== 18. page \"All feedback\"\n";
+include_once(LIKE_BRAVO_PATH.'include/feedback_page.inc.php');
+$cur = '2026-11-20 05:00:00|comment|7|0|';
+ok('page parameters: defaults, unknown values ignored', array(array('unread'=>false, 'kind'=>'all', 'before'=>''), array('unread'=>true, 'kind'=>'comments', 'before'=>$cur), array('unread'=>false, 'kind'=>'all', 'before'=>'')),
+  array(like_bravo_feedback_page_params(array()), like_bravo_feedback_page_params(array('before'=>$cur, 'unread'=>'1', 'kind'=>'comments')),
+    like_bravo_feedback_page_params(array('before'=>'<script>', 'kind'=>'<script>'))));
+ok('page URL keeps only what differs from the defaults', array(make_index_url(array('section'=>'feedback')), make_index_url(array('section'=>'feedback')).'&amp;unread=1&amp;kind=votes&amp;before='.urlencode($cur)),
+  array(like_bravo_feedback_page_url(array('before'=>'', 'unread'=>false, 'kind'=>'all')), like_bravo_feedback_page_url(array('before'=>$cur, 'unread'=>true, 'kind'=>'votes'))));
+$page_before = $page; $tokens_before = isset($tokens) ? $tokens : null; $script_name = $_SERVER['SCRIPT_NAME'];
+$_SERVER['SCRIPT_NAME'] = '/index.php'; $tokens = array('feedback'); $page = array('section'=>'categories', 'body_classes'=>array('section-categories'), 'body_data'=>array());
+visitor($own, '203.0.113.23');
+like_bravo_feedback_section_init();
+ok('index.php?/feedback becomes the page of a member', array('feedback', array(), true), array($page['section'], $page['items'], in_array('section-feedback', $page['body_classes'])));
+$_SESSION = array(); $_GET = array();
+like_bravo_feedback_index();
+$html = $template->get_template_vars('CONTENT');
+$first20 = like_bravo_feedback_list($own, 1, LIKE_BRAVO_FEEDBACK_PER_PAGE);
+$first_items = like_bravo_feedback_items($first20['entries']);
+ok('content: one entry per feedback, each with its cursor, filters, mark all, link to older ones if there are more', array(count($first20['entries']), count($first20['entries']), 2, 1, $first20['has_more'] ? 1 : 0, 0),
+  array(substr_count($html, 'class="lb-bell-entry'), substr_count($html, 'data-cursor="'), substr_count($html, 'class="lb-feedback-filter"'), substr_count($html, 'lb-bell-markall'),
+    substr_count($html, 'class="lb-feedback-more"'), substr_count($html, 'lb-feedback-newest')));
+ok('content: one heading and one list per group of days, newest first', array(count(array_unique(array_column($first_items, 'day'))), count(array_unique(array_column($first_items, 'day')))),
+  array(substr_count($html, 'class="lb-feedback-day"'), substr_count($html, 'class="lb-bell-list lb-feedback-list"')));
+$counts = like_bravo_feedback_counts($own);
+ok('counts: all and unread agree with the list and the bell', array(count(like_bravo_feedback_list($own, 1, 100)['entries']), like_bravo_feedback_unread_count($own)), array($counts['all'], $counts['unread']));
+ok('counts of one kind', count(like_bravo_feedback_list($own, 1, 100, false, 'comments')['entries']), like_bravo_feedback_counts($own, 'comments')['all']);
+$tally = like_bravo_feedback_tally($own);
+$by_kind = array_count_values(array_column(like_bravo_feedback_list($own, 1, 100)['entries'], 'kind'));
+ok('tally: likes, bravos and comments as the list shows them', array(isset($by_kind['like']) ? $by_kind['like'] : 0, isset($by_kind['bravo']) ? $by_kind['bravo'] : 0, isset($by_kind['comment']) ? $by_kind['comment'] : 0, true),
+  array(array_sum(array_column($tally['photos'], 'likes')), array_sum(array_column($tally['photos'], 'bravos')), array_sum(array_column($tally['photos'], 'comments')), $tally['with_bravo']));
+ok('tally of the last days: not more than all', true, array_sum(array_map('array_sum', like_bravo_feedback_tally($own, 7)['photos'])) <= array_sum(array_map('array_sum', $tally['photos'])));
+$top = like_bravo_feedback_top_photos($tally, 2);
+ok('top photos: at most two, most feedback first, with link and thumbnail', array(true, true, true),
+  array(count($top) <= 2, count($top) < 2 or array_sum(array($top[0]['likes'], $top[0]['bravos'], $top[0]['comments'])) >= array_sum(array($top[1]['likes'], $top[1]['bravos'], $top[1]['comments'])),
+    empty($top) or (false !== strpos($top[0]['url'], 'picture.php') and false !== strpos($top[0]['thumb'], '-sq.'))));
+ok('content: overview with the unread number, filters with numbers', array(true, 2),
+  array(false !== strpos($html, '<span class="lb-feedback-big" data-lb-unread>'.like_bravo_feedback_badge_count($own).'</span>'), substr_count($html, 'class="lb-feedback-count"')));
+ok('content: active filters "all"', 2, substr_count($html, 'class="is-active"'));
+$_GET = array('kind'=>'comments');
+like_bravo_feedback_index();
+$html = $template->get_template_vars('CONTENT');
+ok('filter comments: only comments', array(count(like_bravo_feedback_list($own, 1, 30, false, 'comments')['entries']), 0),
+  array(substr_count($html, 'class="lb-bell-entry'), substr_count($html, 'lb-bell-total-like')));
+$_GET = array('unread'=>'1');
+like_bravo_feedback_index();
+ok('filter unread after "mark all": the message for an empty filter', 1, substr_count($template->get_template_vars('CONTENT'), htmlspecialchars(l10n('No entries match the filter.'))));
+$tokens = array('my_likes'); $page = array('section'=>'categories', 'body_classes'=>array(), 'body_data'=>array());
+like_bravo_feedback_section_init();
+ok('other sections are left alone', 'categories', $page['section']);
+$page = $page_before; $tokens = $tokens_before; $_GET = array(); $_SESSION = array(); $_SERVER['SCRIPT_NAME'] = $script_name;
+$template->assign('CONTENT', '');
 
 $conf['rate_anonymous'] = $rate_anonymous_before;
 mode($t1, null);
@@ -692,12 +796,19 @@ function restore_snapshot() {
   foreach (query2array("SELECT id FROM ".USERS_TABLE." WHERE username LIKE 'lb_test_%'", null, 'id') as $id) delete_user($id);
   pwg_query('DELETE FROM '.COMMENTS_TABLE." WHERE content LIKE 'lb_test_%'");
   if (!empty($snap['added_by'])) foreach ($snap['added_by'] as $id => $by) pwg_query('UPDATE '.IMAGES_TABLE.' SET added_by = '.(int)$by.' WHERE id = '.(int)$id);
-  pwg_query('DELETE FROM '.RATE_TABLE); pwg_query('DELETE FROM '.LIKE_BRAVO_MODES_TABLE);
-  foreach ($snap['feedback'] as $table => $rows) { pwg_query('DELETE FROM '.$table); if ($rows) mass_inserts($table, array_keys($rows[0]), $rows); }
-  conf_update_param('like_bravo_feedback_since', $snap['since'], true);
-  if ($snap['rates']) mass_inserts(RATE_TABLE, array_keys($snap['rates'][0]), $snap['rates']);
-  if ($snap['modes']) mass_inserts(LIKE_BRAVO_MODES_TABLE, array_keys($snap['modes'][0]), $snap['modes']);
-  conf_update_param('like_bravo', $snap['conf'], true);
+  // core data first, then the plugin's tables; each step on its own, so that one failure
+  // does not keep the others from running; insert_row(): mass_inserts() turns '' into NULL
+  $steps = array(
+    'rates' => function() use ($snap) { pwg_query('DELETE FROM '.RATE_TABLE); foreach ($snap['rates'] as $row) insert_row(RATE_TABLE, $row); },
+    'modes' => function() use ($snap) { pwg_query('DELETE FROM '.LIKE_BRAVO_MODES_TABLE); foreach ($snap['modes'] as $row) insert_row(LIKE_BRAVO_MODES_TABLE, $row); },
+    'settings' => function() use ($snap) { conf_update_param('like_bravo', $snap['conf'], true); conf_update_param('like_bravo_feedback_since', $snap['since'], true); },
+    'feedback' => function() use ($snap) { foreach ($snap['feedback'] as $table => $rows) { pwg_query('DELETE FROM '.$table); foreach ($rows as $row) insert_row($table, $row); } },
+    );
+  foreach ($steps as $name => $step) {
+    try { $step(); }
+    catch (Throwable $e) { echo "\nRESTORE FAILED ($name): ".$e->getMessage()."\n  data kept in /tmp/like_bravo_scenarios_snapshot.json\n"; return; }
+  }
+  @unlink('/tmp/like_bravo_scenarios_snapshot.json');
   like_bravo_get_explicit_modes(true);
   remove_event_handler('update_rating_score', 'like_bravo_update_rating_score');
   add_event_handler('update_rating_score', 'like_bravo_update_rating_score');
@@ -742,11 +853,11 @@ function comment_edited($cid) { $r = query2array('SELECT e.edited_at, c.validati
   return like_bravo_comment_is_edited($r[0]['edited_at'], $r[0]['validation_date']); }
 function insert_row($table, $row) { // single_insert() would store '' as NULL
   pwg_query('INSERT INTO '.$table.' ('.implode(', ', array_keys($row)).") VALUES ('".implode("', '", array_map('pwg_db_real_escape_string', $row))."')"); }
-function fb_sig($owner, $page = 1, $per_page = 20, $unread = false, $kind = 'all') { // "kind|who|name|photo[|unread]" of each entry
+function fb_sig($owner, $page = 1, $per_page = 20, $unread = false, $kind = 'all', $before = null) { // "kind|who|name|photo[|unread]" of each entry
   return array_map(function($e) { return $e['kind'].'|'.$e['who'].'|'.$e['name'].'|'.$e['image_id'].($e['unread'] ? '|unread' : ''); },
-    like_bravo_feedback_list($owner, $page, $per_page, $unread, $kind)['entries']); }
+    like_bravo_feedback_list($owner, $page, $per_page, $unread, $kind, $before)['entries']); }
 function ws_feedback($method, $params = array(), $token = null) { // feedback methods as the current visitor, with the defaults of the service
-  $defaults = array('list' => array('page'=>1, 'per_page'=>20, 'unread'=>false, 'kind'=>'all'), 'read' => array('rater_id'=>0, 'rater_anonymous_id'=>''), 'all' => array());
+  $defaults = array('list' => array('page'=>1, 'per_page'=>20, 'unread'=>false, 'kind'=>'all', 'before'=>''), 'read' => array('rater_id'=>0, 'rater_anonymous_id'=>''), 'all' => array());
   $functions = array('list' => 'like_bravo_ws_feedback_list', 'read' => 'like_bravo_ws_feedback_mark_read', 'all' => 'like_bravo_ws_feedback_mark_all_read');
   $params = array_merge($defaults[$method], $params, array('pwg_token' => null === $token ? get_pwg_token() : $token)); $service = null;
   $r = @$functions[$method]($params, $service); // @: PwgError sets an HTTP status, impossible on the command line

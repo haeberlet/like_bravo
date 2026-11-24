@@ -43,6 +43,9 @@ function like_bravo_icon_shapes()
       .'<path d="M5.6 5.6l12.8 12.8"/>',
     'cross' =>
       '<path d="M6 6l12 12M18 6L6 18"/>',
+    // not selectable: the number of comments on the page "All feedback"
+    'comment' =>
+      '<path d="M4 5h16v11H10l-5 4v-4H4z"/>',
     );
 }
 

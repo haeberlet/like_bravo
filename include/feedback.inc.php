@@ -67,7 +67,8 @@ SELECT f.read_all_before, ui.registration_date
  * comment id for a comment), rater_id, rater_anonymous_id (key of the read
  * mark: the identifier for anonymous voters, '' otherwise), rate, name,
  * is_guest, t (time of the entry), date_only (vote without a time of its
- * own), read_at, content, edited_at, is_read.
+ * own), read_at, content, edited_at, author_id (account of the voter or of
+ * the author of the comment), is_read.
  *
  * @param int $owner_id
  * @param array $scope as like_bravo_feedback_scope()
@@ -93,7 +94,7 @@ SELECT \'vote\' AS kind, r.element_id AS image_id, r.element_id AS ref_id,
     u.'.$username.' AS name, '.$is_guest.' AS is_guest,
     COALESCE(vt.changed_at, CAST(r.date AS DATETIME)) AS t,
     vt.changed_at IS NULL AS date_only,
-    rd.read_at, NULL AS content, NULL AS edited_at
+    rd.read_at, NULL AS content, NULL AS edited_at, r.user_id AS author_id
   FROM '.RATE_TABLE.' AS r
     LEFT JOIN '.USERS_TABLE.' AS u ON u.'.$user_key.' = r.user_id
     LEFT JOIN '.USER_INFOS_TABLE.' AS ui ON ui.user_id = r.user_id
@@ -120,7 +121,7 @@ SELECT \'comment\' AS kind, c.image_id, c.id AS ref_id,
     c.author AS name, '.$is_guest.' AS is_guest,
     c.validation_date AS t,
     0 AS date_only,
-    rd.read_at, c.content, ce.edited_at
+    rd.read_at, c.content, ce.edited_at, c.author_id
   FROM '.COMMENTS_TABLE.' AS c
     LEFT JOIN '.USER_INFOS_TABLE.' AS ui ON ui.user_id = c.author_id
     LEFT JOIN '.LIKE_BRAVO_COMMENT_EDIT_TABLE.' AS ce ON ce.comment_id = c.id
@@ -181,14 +182,18 @@ SELECT COUNT(*)
  * @param int $per_page 1 to 100
  * @param bool $unread_only
  * @param string $kind 'all', 'votes' or 'comments'
+ * @param array|null $before cursor (like_bravo_feedback_cursor()): only the
+ *    entries older than it, from the first of them; $page is then ignored.
+ *    Unlike pages, a cursor skips nothing when entries are marked as read
+ *    under the filter "unread" between two calls.
  * @return array 'entries' => list of entries (see like_bravo_feedback_entry()),
  *    'page' => int, 'per_page' => int, 'has_more' => bool
  */
-function like_bravo_feedback_list($owner_id, $page=1, $per_page=20, $unread_only=false, $kind='all')
+function like_bravo_feedback_list($owner_id, $page=1, $per_page=20, $unread_only=false, $kind='all', $before=null)
 {
   global $conf;
 
-  $page = max(1, (int)$page);
+  $page = null === $before ? max(1, (int)$page) : 1;
   $per_page = min(100, max(1, (int)$per_page));
   $result = array('entries' => array(), 'page' => $page, 'per_page' => $per_page, 'has_more' => false);
 
@@ -211,6 +216,13 @@ function like_bravo_feedback_list($owner_id, $page=1, $per_page=20, $unread_only
   elseif ('comments' === $kind)
   {
     $where[] = 'e.kind = \'comment\'';
+  }
+  if (null !== $before)
+  {
+    // the order of the list below
+    $where[] = '(e.t, e.kind, e.ref_id, e.rater_id, e.rater_anonymous_id) < (\''.pwg_db_real_escape_string($before['time']).'\', \''
+      .pwg_db_real_escape_string($before['kind']).'\', '.(int)$before['ref_id'].', '.(int)$before['rater_id'].', \''
+      .pwg_db_real_escape_string($before['rater_anonymous_id']).'\')';
   }
 
   $rows = query2array('
@@ -292,7 +304,7 @@ SELECT r.element_id, r.rate, r.user_id, r.anonymous_id,
  * @param bool $names_visible names of voters for the owner
  * @param array $totals as like_bravo_feedback_totals()
  * @return array|null 'kind' => 'like', 'bravo' or 'comment', 'image_id',
- *    'who', 'name' (see like_bravo_feedback_who()), 'time', 'date_only',
+ *    'who', 'name' (see like_bravo_feedback_who()), 'author_id', 'time', 'date_only',
  *    'unread', 'read_key' => array('kind', 'ref_id', 'rater_id',
  *    'rater_anonymous_id'); for votes 'mode' and 'likes', 'bravos' of the
  *    photo; for comments 'comment_id', 'excerpt', 'edited'
@@ -302,6 +314,7 @@ function like_bravo_feedback_entry($row, $scope, $names_visible, $totals)
   $image_id = (int)$row['image_id'];
   $entry = array(
     'image_id' => $image_id,
+    'author_id' => (int)$row['author_id'],
     'time' => $row['t'],
     'date_only' => (bool)$row['date_only'],
     'unread' => !like_bravo_feedback_is_read($row['t'], $scope['read_before'], $row['read_at']),
@@ -493,7 +506,12 @@ function like_bravo_feedback_html($entry)
 
   if ('member' === $who)
   {
-    $html = sprintf($html, '<strong>'.htmlspecialchars($entry['name']).'</strong>');
+    $name = htmlspecialchars($entry['name']);
+    if (!empty($entry['author_url']))
+    {
+      $name = '<a class="lb-bell-author" href="'.htmlspecialchars($entry['author_url']).'" data-ajax="false">'.$name.'</a>';
+    }
+    $html = sprintf($html, '<strong>'.$name.'</strong>');
   }
 
   if ('comment' === $entry['kind'])
@@ -506,7 +524,7 @@ function like_bravo_feedback_html($entry)
 
 /**
  * Short text for the time of an entry: "just now", "5 min ago", "2 h ago",
- * "today", "yesterday" or the date.
+ * "today", "yesterday, 17:12", "Saturday, 21 November" or the date.
  *
  * @param string $time
  * @param string $now from the database, see like_bravo_feedback_when()
@@ -528,8 +546,264 @@ function like_bravo_feedback_when_text($time, $now, $date_only)
     case 'today':
       return l10n('today');
     case 'yesterday':
-      return l10n('yesterday');
+      return $date_only ? l10n('yesterday') : sprintf(l10n('yesterday, %s'), date('H:i', strtotime($time)));
+    case 'week':
+      global $lang;
+      $then = strtotime($time);
+      return sprintf(l10n('%1$s, %2$d %3$s'), $lang['day'][(int)date('w', $then)], (int)date('j', $then), $lang['month'][(int)date('n', $then)]);
     default:
       return format_date($time, array('day', 'month', 'year'));
   }
+}
+
+/**
+ * Entries of the feedback as the bell and the page "All feedback" show
+ * them: text, short time, photo page and square thumbnail; for votes the
+ * totals of the photo with a text for screen readers.
+ *
+ * @param array $entries as like_bravo_feedback_list()['entries']
+ * @return array list of arrays 'key', 'kind', 'unread', 'html', 'when',
+ *    'time', 'day' (see like_bravo_feedback_day()), 'cursor', 'image_id',
+ *    'url', 'thumb', 'thumb_alt'; for votes also
+ *    'likes', 'bravos', 'with_bravo', 'totals_text'
+ */
+function like_bravo_feedback_items($entries)
+{
+  include_once(LIKE_BRAVO_PATH . 'include/voters.inc.php');
+
+  $images = like_bravo_feedback_photos(array_column($entries, 'image_id'));
+  $members = array();
+  foreach ($entries as $entry)
+  {
+    if ('member' === $entry['who'])
+    {
+      $members[] = $entry['author_id'];
+    }
+  }
+  $albums = like_bravo_home_album_urls($members);
+  list($now) = pwg_db_fetch_row(pwg_query('SELECT NOW();'));
+
+  $items = array();
+  foreach ($entries as $entry)
+  {
+    if (!isset($images[$entry['image_id']]))
+    {
+      continue;
+    }
+    $photo = $images[$entry['image_id']];
+    if ('member' === $entry['who'] and isset($albums[$entry['author_id']]))
+    {
+      $entry['author_url'] = $albums[$entry['author_id']];
+    }
+
+    $item = array(
+      'key' => $entry['read_key'],
+      'kind' => $entry['kind'],
+      'unread' => $entry['unread'],
+      'html' => like_bravo_feedback_html($entry),
+      'when' => like_bravo_feedback_when_text($entry['time'], $now, $entry['date_only']),
+      'time' => $entry['time'],
+      'day' => like_bravo_feedback_day($entry['time'], $now),
+      'cursor' => like_bravo_feedback_cursor_text($entry['time'], $entry['read_key']),
+      'image_id' => (int)$entry['image_id'],
+      'url' => $photo['url'].('comment' === $entry['kind'] ? '#comments' : ''),
+      'thumb' => $photo['thumb'],
+      'thumb_alt' => $photo['name'],
+      );
+
+    if ('comment' !== $entry['kind'])
+    {
+      $item['likes'] = $entry['likes'];
+      $item['bravos'] = $entry['bravos'];
+      $item['with_bravo'] = (LIKE_BRAVO_MODE_BOTH == $entry['mode']);
+      $item['totals_text'] = like_bravo_count_text($entry['likes'], '%d like', '%d likes')
+        .($item['with_bravo'] ? ', '.like_bravo_count_text($entry['bravos'], '%d bravo', '%d bravos') : '');
+    }
+
+    $items[] = $item;
+  }
+
+  return $items;
+}
+
+/**
+ * Photo page, square thumbnail and name of some photos.
+ *
+ * @param int[] $image_ids
+ * @return array id => array 'url', 'thumb', 'name'
+ */
+function like_bravo_feedback_photos($image_ids)
+{
+  $image_ids = array_unique(array_map('intval', $image_ids));
+  if (empty($image_ids))
+  {
+    return array();
+  }
+
+  $photos = array();
+  foreach (query2array('
+SELECT id, file, name, path, representative_ext, width, height, rotation
+  FROM '.IMAGES_TABLE.'
+  WHERE id IN ('.implode(',', $image_ids).')
+;') as $image)
+  {
+    $photos[(int)$image['id']] = array(
+      'url' => make_picture_url(array('image_id' => $image['id'], 'image_file' => $image['file'])),
+      'thumb' => DerivativeImage::url(IMG_SQUARE, new SrcImage($image)),
+      'name' => trigger_change('render_element_name',
+        empty($image['name']) ? get_name_from_file($image['file']) : $image['name']),
+      );
+  }
+
+  return $photos;
+}
+
+/**
+ * Number of entries of the feedback of a member, all and unread, for one
+ * kind or all.
+ *
+ * @param int $owner_id
+ * @param string $kind 'all', 'votes' or 'comments'
+ * @return array 'all' => int, 'unread' => int
+ */
+function like_bravo_feedback_counts($owner_id, $kind='all')
+{
+  $scope = like_bravo_feedback_scope($owner_id);
+  $sql = like_bravo_feedback_sql($owner_id, $scope);
+  if (null === $sql)
+  {
+    return array('all' => 0, 'unread' => 0);
+  }
+
+  $where = '';
+  if ('votes' === $kind or 'comments' === $kind)
+  {
+    $where = '
+  WHERE e.kind = \''.('votes' === $kind ? 'vote' : 'comment').'\'';
+  }
+
+  list($all, $unread) = pwg_db_fetch_row(pwg_query('
+SELECT COUNT(*), COALESCE(SUM(NOT e.is_read), 0)
+  FROM ('.$sql.') AS e'.$where.'
+;'));
+
+  return array('all' => (int)$all, 'unread' => (int)$unread);
+}
+
+/**
+ * Likes, bravos and comments others gave to each photo of a member, as the
+ * feedback counts them: votes on photos in a thumbs mode, as the mode of the
+ * album shows them.
+ *
+ * @param int $owner_id
+ * @param int $days only the last days, 0 for all
+ * @return array 'photos' => image id => array 'likes', 'bravos', 'comments';
+ *    'with_bravo' => bool, some photo is in an album with bravos
+ */
+function like_bravo_feedback_tally($owner_id, $days=0)
+{
+  $scope = like_bravo_feedback_scope($owner_id);
+  $result = array('photos' => array(), 'with_bravo' => in_array(LIKE_BRAVO_MODE_BOTH, $scope['thumbs']));
+  $sql = like_bravo_feedback_sql($owner_id, $scope);
+  if (null === $sql)
+  {
+    return $result;
+  }
+
+  $rows = query2array('
+SELECT e.image_id, e.kind, e.rate, COUNT(*) AS n
+  FROM ('.$sql.') AS e'
+  .($days > 0 ? '
+  WHERE e.t >= NOW() - INTERVAL '.(int)$days.' DAY' : '').'
+  GROUP BY e.image_id, e.kind, e.rate
+;');
+
+  foreach ($rows as $row)
+  {
+    $id = (int)$row['image_id'];
+    if (!isset($result['photos'][$id]))
+    {
+      $result['photos'][$id] = array('likes' => 0, 'bravos' => 0, 'comments' => 0);
+    }
+    if ('comment' === $row['kind'])
+    {
+      $result['photos'][$id]['comments'] += (int)$row['n'];
+      continue;
+    }
+    $level = like_bravo_classify_rate($row['rate'], isset($scope['thumbs'][$id]) ? $scope['thumbs'][$id] : LIKE_BRAVO_MODE_STARS);
+    if ('like' === $level or 'bravo' === $level)
+    {
+      $result['photos'][$id][$level.'s'] += (int)$row['n'];
+    }
+  }
+
+  return $result;
+}
+
+/**
+ * The photos of a tally with the most feedback.
+ *
+ * @param array $tally as like_bravo_feedback_tally()
+ * @param int $limit
+ * @return array list of arrays 'url', 'thumb', 'name', 'likes', 'bravos',
+ *    'comments'
+ */
+function like_bravo_feedback_top_photos($tally, $limit=3)
+{
+  $counts = $tally['photos'];
+  uksort($counts, function($a, $b) use ($counts) {
+    $diff = array_sum($counts[$b]) - array_sum($counts[$a]);
+    return 0 !== $diff ? $diff : $b - $a;
+  });
+  $counts = array_slice($counts, 0, $limit, true);
+
+  $top = array();
+  $photos = like_bravo_feedback_photos(array_keys($counts));
+  foreach ($counts as $id => $count)
+  {
+    if (isset($photos[$id]))
+    {
+      $top[] = array_merge($photos[$id], $count);
+    }
+  }
+
+  return $top;
+}
+
+/**
+ * Home albums of members, as the plugin Community keeps them (a user album
+ * per member, marked in the column community_user of the albums), for a
+ * link on the name of a member in the feedback. Only while Community is
+ * active, and only albums the current visitor may see.
+ *
+ * @param int[] $user_ids
+ * @return array user id => URL of the album
+ */
+function like_bravo_home_album_urls($user_ids)
+{
+  global $pwg_loaded_plugins;
+
+  $user_ids = array_unique(array_filter(array_map('intval', $user_ids)));
+  if (empty($user_ids) or !isset($pwg_loaded_plugins['community']))
+  {
+    return array();
+  }
+
+  $urls = array();
+  $albums = query2array('
+SELECT id, name, permalink, community_user
+  FROM '.CATEGORIES_TABLE.'
+  WHERE community_user IN ('.implode(',', $user_ids).')
+'.get_sql_condition_FandF(array('forbidden_categories' => 'id', 'visible_categories' => 'id'), 'AND').'
+  ORDER BY id
+;');
+  foreach ($albums as $album)
+  {
+    if (!isset($urls[(int)$album['community_user']]))
+    {
+      $urls[(int)$album['community_user']] = make_index_url(array('category' => $album));
+    }
+  }
+
+  return $urls;
 }

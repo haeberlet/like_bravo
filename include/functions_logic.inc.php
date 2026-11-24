@@ -1050,16 +1050,17 @@ function like_bravo_feedback_who($is_guest, $name, $names_visible)
 /**
  * How long ago an entry of the feedback is, for a short text: under a
  * minute "just now", then minutes, then hours up to a day, then "yesterday"
- * for the day before, else the date. Votes from before the plugin kept
- * their time (date only) show "today", "yesterday" or the date.
+ * for the day before, the weekday for the days of the last week, else the
+ * date. Votes from before the plugin kept their time (date only) show
+ * "today", "yesterday", the weekday or the date.
  *
  * Both times come from the database, so that their time zones agree.
  *
  * @param string $time 'Y-m-d H:i:s'
  * @param string $now 'Y-m-d H:i:s'
  * @param bool $date_only
- * @return array 'unit' => 'now', 'minutes', 'hours', 'today', 'yesterday'
- *    or 'date'; 'value' => number of minutes or hours, else 0
+ * @return array 'unit' => 'now', 'minutes', 'hours', 'today', 'yesterday',
+ *    'week' or 'date'; 'value' => number of minutes or hours, else 0
  */
 function like_bravo_feedback_when($time, $now, $date_only=false)
 {
@@ -1080,7 +1081,7 @@ function like_bravo_feedback_when($time, $now, $date_only=false)
     {
       return array('unit' => 'today', 'value' => 0);
     }
-    return array('unit' => $day === $yesterday ? 'yesterday' : 'date', 'value' => 0);
+    return array('unit' => $day === $yesterday ? 'yesterday' : like_bravo_feedback_day($time, $now), 'value' => 0);
   }
 
   $seconds = max(0, $current - $then);
@@ -1101,5 +1102,86 @@ function like_bravo_feedback_when($time, $now, $date_only=false)
     return array('unit' => 'yesterday', 'value' => 0);
   }
 
-  return array('unit' => 'date', 'value' => 0);
+  return array('unit' => like_bravo_feedback_day($time, $now), 'value' => 0);
+}
+
+/**
+ * The group of days an entry of the feedback is listed under on the page
+ * "All feedback", by calendar day: today, yesterday, the five days before
+ * (together the last seven days), or earlier.
+ *
+ * @param string $time 'Y-m-d H:i:s'
+ * @param string $now 'Y-m-d H:i:s'
+ * @return string 'today', 'yesterday', 'week' or 'date'
+ */
+function like_bravo_feedback_day($time, $now)
+{
+  $then = strtotime((string)$time);
+  $current = strtotime((string)$now);
+  if (false === $then or false === $current)
+  {
+    return 'date';
+  }
+
+  $day = date('Y-m-d', $then);
+  $today = date('Y-m-d', $current);
+  if ($day >= $today)
+  {
+    return 'today';
+  }
+  if ($day === date('Y-m-d', strtotime($today.' -1 day')))
+  {
+    return 'yesterday';
+  }
+
+  return $day >= date('Y-m-d', strtotime($today.' -6 days')) ? 'week' : 'date';
+}
+
+/**
+ * Cursor of a feedback entry, for loading the entries older than it: its
+ * time and its read key, in the order of the list.
+ *
+ * @param string $time 'YYYY-MM-DD HH:MM:SS'
+ * @param array $key 'kind', 'ref_id', 'rater_id', 'rater_anonymous_id'
+ * @return string
+ */
+function like_bravo_feedback_cursor_text($time, $key)
+{
+  return $time.'|'.$key['kind'].'|'.(int)$key['ref_id'].'|'.(int)$key['rater_id'].'|'.$key['rater_anonymous_id'];
+}
+
+/**
+ * Reads a cursor of like_bravo_feedback_cursor_text().
+ *
+ * @param mixed $value
+ * @return array|null 'time', 'kind', 'ref_id', 'rater_id',
+ *    'rater_anonymous_id'; null if empty or not a cursor
+ */
+function like_bravo_feedback_cursor($value)
+{
+  if (!is_string($value) or '' === $value)
+  {
+    return null;
+  }
+  $parts = explode('|', $value, 5);
+  if (5 !== count($parts))
+  {
+    return null;
+  }
+  list($time, $kind, $ref_id, $rater_id, $anonymous_id) = $parts;
+  if (!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $time)
+      or !in_array($kind, array('vote', 'comment'), true)
+      or !ctype_digit($ref_id) or !ctype_digit($rater_id)
+      or strlen($anonymous_id) > 45)
+  {
+    return null;
+  }
+
+  return array(
+    'time' => $time,
+    'kind' => $kind,
+    'ref_id' => (int)$ref_id,
+    'rater_id' => (int)$rater_id,
+    'rater_anonymous_id' => $anonymous_id,
+    );
 }

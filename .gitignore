@@ -3,3 +3,4 @@ dist/
 # Project notes live in the private repository like_bravo-notes
 /CLAUDE.md
 /KONZEPT.md
+temp/*

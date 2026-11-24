@@ -26,6 +26,7 @@ function like_bravo_feedback_ws_add_methods(&$service)
       'per_page' => array('default' => 20, 'maxValue' => 100, 'type' => WS_TYPE_INT | WS_TYPE_POSITIVE),
       'unread' => array('default' => false, 'type' => WS_TYPE_BOOL),
       'kind' => array('default' => 'all', 'info' => 'all, votes, comments'),
+      'before' => array('default' => '', 'info' => 'cursor of the last entry loaded: the entries older than it, page is then ignored'),
       'pwg_token' => array(),
       ),
     'Likes, bravos and comments others gave to the photos of the current member, newest first, with their read status.'
@@ -85,6 +86,7 @@ function like_bravo_ws_feedback_refused($params)
  *    @option int per_page
  *    @option bool unread
  *    @option string kind 'all', 'votes' or 'comments'
+ *    @option string before cursor of an entry, or ''
  *    @option string pwg_token
  */
 function like_bravo_ws_feedback_list($params, &$service)
@@ -97,57 +99,15 @@ function like_bravo_ws_feedback_list($params, &$service)
   }
 
   $kind = in_array($params['kind'], array('all', 'votes', 'comments'), true) ? $params['kind'] : 'all';
-  $list = like_bravo_feedback_list($user['id'], $params['page'], $params['per_page'], (bool)$params['unread'], $kind);
-
-  $images = array();
-  $image_ids = array_unique(array_column($list['entries'], 'image_id'));
-  if (!empty($image_ids))
+  $before = like_bravo_feedback_cursor((string)$params['before']);
+  if (null === $before and '' !== (string)$params['before'])
   {
-    $images = query2array('
-SELECT id, file, name, path, representative_ext, width, height, rotation
-  FROM '.IMAGES_TABLE.'
-  WHERE id IN ('.implode(',', array_map('intval', $image_ids)).')
-;', 'id');
+    return new PwgError(WS_ERR_INVALID_PARAM, 'Invalid cursor');
   }
-
-  list($now) = pwg_db_fetch_row(pwg_query('SELECT NOW();'));
+  $list = like_bravo_feedback_list($user['id'], $params['page'], $params['per_page'], (bool)$params['unread'], $kind, $before);
 
   set_make_full_url();
-  $entries = array();
-  foreach ($list['entries'] as $entry)
-  {
-    if (!isset($images[$entry['image_id']]))
-    {
-      continue;
-    }
-    $image = $images[$entry['image_id']];
-
-    $item = array(
-      'key' => $entry['read_key'],
-      'kind' => $entry['kind'],
-      'unread' => $entry['unread'],
-      'html' => like_bravo_feedback_html($entry),
-      'when' => like_bravo_feedback_when_text($entry['time'], $now, $entry['date_only']),
-      'time' => $entry['time'],
-      'image_id' => (int)$entry['image_id'],
-      'url' => make_picture_url(array('image_id' => $image['id'], 'image_file' => $image['file']))
-        .('comment' === $entry['kind'] ? '#comments' : ''),
-      'thumb' => DerivativeImage::url(IMG_SQUARE, new SrcImage($image)),
-      'thumb_alt' => trigger_change('render_element_name',
-        empty($image['name']) ? get_name_from_file($image['file']) : $image['name']),
-      );
-
-    if ('comment' !== $entry['kind'])
-    {
-      $item['likes'] = $entry['likes'];
-      $item['bravos'] = $entry['bravos'];
-      $item['with_bravo'] = (LIKE_BRAVO_MODE_BOTH == $entry['mode']);
-      $item['totals_text'] = like_bravo_count_text($entry['likes'], '%d like', '%d likes')
-        .($item['with_bravo'] ? ', '.like_bravo_count_text($entry['bravos'], '%d bravo', '%d bravos') : '');
-    }
-
-    $entries[] = $item;
-  }
+  $entries = like_bravo_feedback_items($list['entries']);
   unset_make_full_url();
 
   return array(

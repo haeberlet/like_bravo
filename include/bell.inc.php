@@ -24,6 +24,7 @@ function like_bravo_bell()
     'token' => get_pwg_token(),
     'count' => like_bravo_feedback_badge_count($user['id']),
     'theme' => isset($user['theme']) ? (string)$user['theme'] : '',
+    'all_url' => make_index_url(array('section' => 'feedback')),
     'strings' => array(
       'title' => l10n('Feedback'),
       'unread_count' => l10n('Feedback: %d unread'),
@@ -33,6 +34,8 @@ function like_bravo_bell()
       'empty' => l10n('No feedback on your photos yet.'),
       'error' => l10n('The feedback could not be loaded.'),
       'close' => l10n('Close'),
+      'all' => l10n('All feedback'),
+      'loading' => l10n('Loading…'),
       ),
     );
 
