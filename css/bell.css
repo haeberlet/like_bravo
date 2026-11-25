@@ -10,6 +10,7 @@
   --lb-bell-unread: #2e8fd8;
   --lb-bell-unread-bg: rgba(46, 143, 216, 0.12);
   --lb-bell-line: rgba(128, 128, 128, 0.35);
+  --lb-bell-hover: rgba(128, 128, 128, 0.12);
 }
 
 /* --- the bell ------------------------------------------------------------ */
@@ -210,8 +211,10 @@
   list-style: none;
 }
 
-/* an entry: the thumbnail leads to the photo, the name of a member to his
-   home album; the rest is no link */
+/* an entry: a click anywhere leads to the photo. The link of the thumbnail
+   stretches over the whole entry (its ::after); the names of members, which
+   lead to their home albums, and the dot lie above it. No link inside a link,
+   so a new tab and the keyboard work as usual. */
 .lb-bell-entry {
   position: relative;
   display: flex;
@@ -237,13 +240,36 @@
   line-height: 0;
 }
 
-.lb-bell-photo:hover .lb-bell-thumb {
-  opacity: 0.85;
+/* z-index: also above the line of the time, which its opacity puts on a
+   layer of its own */
+.lb-bell-photo::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+}
+
+/* over the background of read and unread entries alike */
+.lb-bell-entry:hover {
+  box-shadow: inset 0 0 0 100vmax var(--lb-bell-hover);
 }
 
 .lb-bell-photo:focus-visible {
+  outline: none;
+}
+
+.lb-bell-photo:focus-visible::after {
   outline: 2px solid var(--lb-bell-unread);
-  outline-offset: 2px;
+  outline-offset: -2px;
+}
+
+.lb-bell-author,
+.lb-bell-dot {
+  position: relative;
+  z-index: 2;
 }
 
 .lb-bell-thumb {
@@ -265,12 +291,16 @@
 
 .lb-bell-author {
   color: inherit !important;
-  text-decoration: none !important;
+  text-decoration: underline !important;
+  text-decoration-thickness: 1px !important;
+  text-decoration-color: rgba(128, 128, 128, 0.6) !important;
+  text-underline-offset: 3px;
 }
 
 .lb-bell-author:hover,
 .lb-bell-author:focus-visible {
-  text-decoration: underline !important;
+  text-decoration-thickness: 2px !important;
+  text-decoration-color: currentColor !important;
 }
 
 .lb-bell-text {
@@ -394,6 +424,7 @@
   --lb-bell-unread: #2e8fd8;
   --lb-bell-unread-bg: rgba(46, 143, 216, 0.12);
   --lb-bell-line: rgba(128, 128, 128, 0.35);
+  --lb-bell-hover: rgba(128, 128, 128, 0.12);
   box-sizing: border-box;
   display: grid;
   grid-template-columns: minmax(0, 700px) 300px;

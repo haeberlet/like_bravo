@@ -92,11 +92,12 @@ followed by the time and the photo's current likes and bravos:
 
 ![The open list of the bell in the theme Bootstrap Darkroom, with read and unread entries](docs/screenshots/bell.png)
 
-Unread entries have a blue dot and a light background. A click on the thumbnail
-opens the photo page (for a comment, at the comments) and marks the entry as
-read. So does a click on the dot, without leaving the list. "Mark all as read"
-marks everything at once. A click on the name of a member opens their own album
-of the plugin Community, if there is one with photos the owner may see.
+Unread entries have a blue dot and a light background. A click anywhere on an
+entry opens the photo page (for a comment, at the comments) and marks the entry
+as read. A click on the dot marks it as read without leaving the list. "Mark all
+as read" marks everything at once. Underlined names lead to the member's own
+album of the plugin Community; a name is underlined if there is such an album
+with photos the reader may see.
 
 The link "All feedback" at the bottom of the list leads to a page with all
 feedback without an age limit. It is a feed under the headings Today, Yesterday,

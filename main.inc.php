@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Like & Bravo
-Version: 0.3.0
+Version: 0.3.1
 Description: Replaces the star rating by "Like" / "Bravo" in selected albums, built on the native rating system.
 Plugin URI:
 Author: Tilmann Haeberle

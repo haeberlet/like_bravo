@@ -49,8 +49,8 @@ First public release, planned as 1.0.0.
 * Page "All feedback": a feed by day with an overview of the last 7 days,
   filters (unread; likes and bravos; comments) and the photos with the most
   feedback.
-* The thumbnail leads to the photo, the name of a member to their album of the
-  plugin Community.
+* A click on an entry leads to the photo, a click on an underlined name to the
+  member's album of the plugin Community.
 * Names follow the setting "Names of voters". A changed vote or an edited comment
   is unread again.
 * Placed in the menu bar of Bootstrap Darkroom, Modus, Elegant and SmartPocket,
