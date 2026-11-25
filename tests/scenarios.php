@@ -825,6 +825,20 @@ ok('item: to the comments, no totals', array('#comments', false, 'discussion'), 
 ok('counts and filters: "Also commented" yes, comments on his photos none', array(4, 4, 4, 0, 0),
   array(like_bravo_feedback_unread_count($bo), like_bravo_feedback_counts($bo, 'discussions')['all'], count(like_bravo_feedback_list($bo, 1, 50, false, 'discussions')['entries']),
     like_bravo_feedback_counts($bo, 'comments')['all'], like_bravo_feedback_counts($bo, 'votes')['all']));
+include_once(LIKE_BRAVO_PATH.'include/feedback_ws.inc.php'); include_once(LIKE_BRAVO_PATH.'include/feedback_page.inc.php');
+$ws = ws_feedback('list', array('kind'=>'discussions'));
+ok('web service: filter "discussions", the same entries as the data layer', array(array('discussion'), 4, '#comments'),
+  array(array_values(array_unique(array_column($ws['entries'], 'kind'))), count($ws['entries']), substr($ws['entries'][0]['url'], -9)));
+ok('web service: filter "comments" leaves them out', array(), ws_feedback('list', array('kind'=>'comments'))['entries']);
+ok('page parameters: kind "discussions"', 'discussions', like_bravo_feedback_page_params(array('kind'=>'discussions'))['kind']);
+$script_name = $_SERVER['SCRIPT_NAME']; $_SERVER['SCRIPT_NAME'] = '/index.php'; $page_before = $page; $tokens_before = isset($tokens) ? $tokens : null;
+$tokens = array('feedback'); $page = array('section'=>'categories', 'body_classes'=>array(), 'body_data'=>array());
+like_bravo_feedback_section_init(); $_GET = array('kind'=>'discussions'); $_SESSION = array();
+like_bravo_feedback_index(); $html = $template->get_template_vars('CONTENT');
+ok('page: filter "Also commented" active, its entries without totals', array(true, 4, 0, true),
+  array(false !== strpos($html, htmlspecialchars(l10n('Also commented'))), substr_count($html, 'class="lb-bell-entry'), substr_count($html, 'lb-bell-total-like'),
+    false !== strpos($html, 'data-kind="discussions"')));
+$page = $page_before; $tokens = $tokens_before; $_GET = array(); $_SESSION = array(); $_SERVER['SCRIPT_NAME'] = $script_name; $template->assign('CONTENT', '');
 ok('tally and top photos leave "Also commented" out', array(array(), array()), array(like_bravo_feedback_tally($bo)['photos'], like_bravo_feedback_top_photos(like_bravo_feedback_tally($bo))));
 
 ok('mark read: an entry "Also commented"; not a comment before his first one', array(true, false, 3),

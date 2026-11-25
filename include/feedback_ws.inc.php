@@ -25,7 +25,7 @@ function like_bravo_feedback_ws_add_methods(&$service)
       'page' => array('default' => 1, 'type' => WS_TYPE_INT | WS_TYPE_POSITIVE),
       'per_page' => array('default' => 20, 'maxValue' => 100, 'type' => WS_TYPE_INT | WS_TYPE_POSITIVE),
       'unread' => array('default' => false, 'type' => WS_TYPE_BOOL),
-      'kind' => array('default' => 'all', 'info' => 'all, votes, comments'),
+      'kind' => array('default' => 'all', 'info' => 'all, votes, comments, discussions'),
       'before' => array('default' => '', 'info' => 'cursor of the last entry loaded: the entries older than it, page is then ignored'),
       'pwg_token' => array(),
       ),
@@ -85,7 +85,8 @@ function like_bravo_ws_feedback_refused($params)
  *    @option int page
  *    @option int per_page
  *    @option bool unread
- *    @option string kind 'all', 'votes' or 'comments'
+ *    @option string kind 'all', 'votes', 'comments' (on own photos) or
+ *      'discussions' ("Also commented")
  *    @option string before cursor of an entry, or ''
  *    @option string pwg_token
  */
@@ -98,7 +99,7 @@ function like_bravo_ws_feedback_list($params, &$service)
     return $refused;
   }
 
-  $kind = in_array($params['kind'], array('all', 'votes', 'comments'), true) ? $params['kind'] : 'all';
+  $kind = in_array($params['kind'], array('all', 'votes', 'comments', 'discussions'), true) ? $params['kind'] : 'all';
   $before = like_bravo_feedback_cursor((string)$params['before']);
   if (null === $before and '' !== (string)$params['before'])
   {

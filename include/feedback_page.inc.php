@@ -35,7 +35,8 @@ function like_bravo_feedback_count_text($count, $with_bravo)
  * Filters and start asked for by the URL.
  *
  * @param array $get
- * @return array 'unread' => bool, 'kind' => 'all', 'votes' or 'comments',
+ * @return array 'unread' => bool, 'kind' => 'all', 'votes', 'comments' or
+ *    'discussions',
  *    'before' => cursor of the entry to start after (like_bravo_feedback_cursor_text()), or ''
  */
 function like_bravo_feedback_page_params($get)
@@ -45,7 +46,7 @@ function like_bravo_feedback_page_params($get)
 
   return array(
     'unread' => !empty($get['unread']),
-    'kind' => in_array($kind, array('all', 'votes', 'comments'), true) ? $kind : 'all',
+    'kind' => in_array($kind, array('all', 'votes', 'comments', 'discussions'), true) ? $kind : 'all',
     'before' => null === like_bravo_feedback_cursor($before) ? '' : $before,
     );
 }
@@ -136,7 +137,7 @@ function like_bravo_feedback_index()
   $filters = array();
   foreach (array(
       'status' => array('all' => 'All entries', 'unread' => 'Unread'),
-      'kind' => array('all' => 'All kinds', 'votes' => 'Likes and bravos', 'comments' => 'Comments'),
+      'kind' => array('all' => 'All kinds', 'votes' => 'Likes and bravos', 'comments' => 'Comments', 'discussions' => 'Also commented'),
       ) as $group => $choices)
   {
     foreach ($choices as $value => $label)
