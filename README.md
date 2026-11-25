@@ -9,7 +9,7 @@ It is built on Piwigo's own rating system: votes are stored as ordinary ratings,
 at any time without losing a vote.
 
 Members also get a bell that tells them who liked their photos, gave them a bravo
-or commented on them.
+or commented on them, and who else commented on photos they commented on.
 
 * Internal name: `like_bravo` (directory name in `plugins/`)
 * Requires Piwigo 16 or later, PHP 8
@@ -75,8 +75,8 @@ and "My bravos", with the latest votes first.
 
 Signed-in members see a bell on every page of the gallery. Its red number counts
 the likes, bravos and comments that others gave to their photos and that they have
-not read yet. A photo belongs to the member who added it, for example with the
-plugin Community.
+not read yet, and the new comments on photos of others that they commented on. A
+photo belongs to the member who added it, for example with the plugin Community.
 
 A click on the bell opens the latest feedback, newest first. Older entries load
 while scrolling. Each entry has the thumbnail of the photo and one line of text,
@@ -86,6 +86,9 @@ followed by the time and the photo's current likes and bravos:
 * "Ben commented on your photo: Lovely light in the …" (the beginning of the
   comment)
 * "Ben edited a comment on your photo: …"
+* "Carl commented on a photo by Anna that you commented on too: …", or "Anna
+  commented on their own photo that you commented on too: …" when the owner of
+  the photo wrote the comment
 
 ![The open list of the bell in the theme Bootstrap Darkroom, with read and unread entries](docs/screenshots/bell.png)
 
@@ -98,8 +101,10 @@ of the plugin Community, if there is one with photos the owner may see.
 The link "All feedback" at the bottom of the list leads to a page with all
 feedback without an age limit. It is a feed under the headings Today, Yesterday,
 This week and Earlier. Next to the feed are an overview of the last 7 days, the
-filters All entries / Unread and All kinds / Likes and bravos / Comments, and the
-photos with the most feedback. On phones these sit above the feed.
+filters All entries / Unread and All kinds / Likes and bravos / Comments / Also
+commented, and the photos with the most feedback. The overview and the photos with
+the most feedback count only feedback on the member's own photos. On phones these
+sit above the feed.
 
 ![Page "All feedback": the feed under the heading Today, next to it the overview, the filters and the photos with the most feedback](docs/screenshots/feedback-page.png)
 
@@ -111,6 +116,12 @@ What counts:
   deleted comment or photo disappear. Comments that need approval appear once
   they are approved.
 * A member's own votes and comments on their own photos do not appear.
+* Also commented: after a member commented on a photo of someone else, every
+  later comment of others on it appears, whether it answers them or not (Piwigo
+  does not know answers). Comments written before the member's first one do not
+  appear, nor do likes and bravos on such photos. The entries disappear when the
+  member deletes all their comments on the photo, or when they may no longer see
+  the photo. An edited comment does not come back as unread.
 * Names follow the setting "Names of voters". Shown "to signed-in members" or "to
   all visitors", members see in the bell who liked their photos or gave them a
   bravo. Shown "to nobody", the entry says "Your photo got a like" or "Your photo

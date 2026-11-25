@@ -56,6 +56,11 @@ First public release, planned as 1.0.0.
 * Placed in the menu bar of Bootstrap Darkroom, Modus, Elegant and SmartPocket,
   in the top right corner elsewhere. No settings, no emails.
 * After the update, all earlier feedback counts as read.
+* Also commented: new comments of others on photos of someone else that the
+  member commented on, with their own filter on the page "All feedback". The
+  owner of the photo is named and linked, also when they wrote the comment
+  themselves ("… commented on their own photo …"). Only photos the member may
+  still see.
 
 ### Settings
 
