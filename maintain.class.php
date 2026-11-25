@@ -50,10 +50,18 @@ CREATE TABLE IF NOT EXISTS `'.$this->table.'` (
     // Feedback starts now: what members received before counts as read,
     // also for members without a row of their own (see KONZEPT-RUECKMELDUNGEN
     // 12.2). Kept on later updates.
+    list($now) = pwg_db_fetch_row(pwg_query('SELECT NOW();'));
     if (empty($conf['like_bravo_feedback_since']))
     {
-      list($now) = pwg_db_fetch_row(pwg_query('SELECT NOW();'));
       conf_update_param('like_bravo_feedback_since', $now, true);
+    }
+
+    // Entries "Also commented" (0.3.0) start now as well: comments on photos
+    // a member commented on before count as read (KONZEPT-AUCH-KOMMENTIERT
+    // 4). Kept on later updates.
+    if (empty($conf['like_bravo_discussion_since']))
+    {
+      conf_update_param('like_bravo_discussion_since', $now, true);
     }
   }
 
@@ -165,6 +173,6 @@ CREATE TABLE IF NOT EXISTS `'.$this->feedback_tables['comment_edit'].'` (
     {
       pwg_query('DROP TABLE IF EXISTS `'.$table.'`;');
     }
-    conf_delete_param(array('like_bravo', 'like_bravo_feedback_since'));
+    conf_delete_param(array('like_bravo', 'like_bravo_feedback_since', 'like_bravo_discussion_since'));
   }
 }

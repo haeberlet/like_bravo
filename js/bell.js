@@ -170,7 +170,7 @@ var LikeBravoBell = (function() {
 
     var meta = el('span', 'lb-bell-meta');
     meta.appendChild(el('span', 'lb-bell-when', item.when));
-    if (item.kind !== 'comment') {
+    if (item.likes !== undefined) { // votes only
       meta.appendChild(el('span', 'lb-bell-sep', '·'));
       meta.appendChild(totals(item));
     }

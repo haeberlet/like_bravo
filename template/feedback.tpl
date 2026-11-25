@@ -82,7 +82,7 @@
             <span class="lb-bell-text">{$item.html}</span>
             <span class="lb-bell-meta">
               <span class="lb-bell-when">{$item.when}</span>
-{if $item.kind != 'comment'}
+{if isset($item.likes)}
               <span class="lb-bell-sep">·</span>
               <span class="lb-bell-totals">
                 <span class="lb-bell-total lb-bell-total-like" aria-hidden="true">{$fb.ICONS.like}{$item.likes}</span>

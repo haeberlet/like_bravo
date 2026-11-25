@@ -57,6 +57,7 @@ $snap = array(
   'modes' => query2array('SELECT * FROM '.LIKE_BRAVO_MODES_TABLE),
   'conf' => $conf['like_bravo'],
   'since' => $conf['like_bravo_feedback_since'],
+  'discussion_since' => isset($conf['like_bravo_discussion_since']) ? $conf['like_bravo_discussion_since'] : null,
   'feedback' => array(),
   );
 foreach (feedback_tables() as $table) $snap['feedback'][$table] = query2array('SELECT * FROM '.$table);
@@ -155,10 +156,10 @@ $errors = (new plugins())->perform_action('activate', 'like_bravo');
 ok('fresh install without errors', array(), $errors);
 ok('table is back and empty', array(1, 0), array(count(query2array("SHOW TABLES LIKE '".LIKE_BRAVO_MODES_TABLE."'")), count(query2array('SELECT * FROM '.LIKE_BRAVO_MODES_TABLE))));
 ok('plugin active', 'active', query2array("SELECT state FROM ".PLUGINS_TABLE." WHERE id = 'like_bravo'", null, 'state')[0]);
-ok('feedback tables are back, empty, start of feedback set', array(4, 0, true), array(
+ok('feedback tables are back, empty, start of feedback and of "Also commented" set', array(4, 0, true, true), array(
   count(array_filter(feedback_tables(), function($t) { return count(query2array("SHOW TABLES LIKE '".$t."'")); })),
   array_sum(array_map(function($t) { return count(query2array('SELECT * FROM '.$t)); }, feedback_tables())),
-  !empty($conf['like_bravo_feedback_since'])));
+  !empty($conf['like_bravo_feedback_since']), !empty($conf['like_bravo_discussion_since'])));
 
 echo "== 9. guests\n";
 // T1 like + bravo: photos A and B are thumbs photos, photo C is a star photo
@@ -782,6 +783,122 @@ ok('other sections are left alone', 'categories', $page['section']);
 $page = $page_before; $tokens = $tokens_before; $_GET = array(); $_SESSION = array(); $_SERVER['SCRIPT_NAME'] = $script_name;
 $template->assign('CONTENT', '');
 
+echo "== 19. \"Also commented\": comments on photos of others the member commented on\n";
+// Bob owns no photo. B belongs to Alice (T2, T4), C to the owner (T4), A to the owner (T2); all also in their own albums
+$snap['level'] = query2array('SELECT id, level FROM '.IMAGES_TABLE." WHERE id IN ($a, $b, $c)", 'id', 'level');
+foreach (feedback_tables() as $table) if (LIKE_BRAVO_VOTE_TIME_TABLE !== $table) pwg_query('DELETE FROM '.$table);
+pwg_query('UPDATE '.USER_INFOS_TABLE." SET registration_date = '2026-01-01 00:00:00' WHERE user_id IN ($bo, $al)");
+conf_update_param('like_bravo_feedback_since', '2026-01-01 00:00:00', true);
+conf_update_param('like_bravo_discussion_since', '2026-01-01 00:00:00', true);
+$conf['comments_validation'] = false; $_SESSION = array();
+$dc = array();
+foreach (array( // photo, author, name, written, validated (null: waiting)
+    'karl_before' => array($b, $ca, 'lb_test_karl', '2026-11-21 08:00:00', '2026-11-21 08:00:00'),
+    'owner_b' => array($b, $own, 'lb_test_owner', '2026-11-21 08:30:00', '2026-11-21 08:30:00'),
+    'bob1' => array($b, $bo, 'lb_test_bob', '2026-11-21 09:00:00', '2026-11-21 09:00:00'),
+    'bob_c' => array($c, $bo, 'lb_test_bob', '2026-11-21 09:30:00', '2026-11-21 09:30:00'),
+    'alice_b' => array($b, $al, 'lb_test_alice', '2026-11-21 10:00:00', '2026-11-21 10:00:00'),
+    'owner_c' => array($c, $own, 'lb_test_owner', '2026-11-21 10:30:00', '2026-11-21 10:30:00'),
+    'guest_b' => array($b, $guest, 'Hans', '2026-11-21 11:00:00', '2026-11-21 11:00:00'),
+    'bob2' => array($b, $bo, 'lb_test_bob', '2026-11-21 12:00:00', '2026-11-21 12:00:00'),
+    'karl_b' => array($b, $ca, 'lb_test_karl', '2026-11-21 13:00:00', '2026-11-21 13:00:00'),
+    'karl_waiting' => array($b, $ca, 'lb_test_karl', '2026-11-21 13:30:00', null),
+    'karl_a' => array($a, $ca, 'lb_test_karl', '2026-11-21 14:00:00', '2026-11-21 14:00:00'),
+    ) as $key => $x)
+{
+  single_insert(COMMENTS_TABLE, array('image_id'=>$x[0], 'date'=>$x[3], 'author'=>$x[2], 'author_id'=>$x[1], 'anonymous_id'=>'203.0.113',
+    'content'=>'lb_test_ '.$key, 'validated'=> null === $x[4] ? 'false' : 'true', 'validation_date'=>$x[4]));
+  $dc[$key] = (int)pwg_db_insert_id(COMMENTS_TABLE);
+}
+visitor($bo, '203.0.113.22');
+ok('Bob: comments after his first one on photos of others; not his own, not before, not waiting; not on A (his comment there waits)', array(
+  "discussion|member|lb_test_karl|$b|unread", "discussion|guest||$b|unread", "discussion|member|lb_test_owner|$c|unread", "discussion|member|lb_test_alice|$b|unread"), fb_sig($bo));
+$list = like_bravo_feedback_list($bo)['entries'];
+ok('entry: owner of the photo, read key of the comment, time of validation, not edited', array('lb_test_alice', $al, array('kind'=>'comment', 'ref_id'=>$dc['karl_b'], 'rater_id'=>0, 'rater_anonymous_id'=>''), '2026-11-21 13:00:00', false),
+  array($list[0]['owner_name'], $list[0]['owner_id'], $list[0]['read_key'], $list[0]['time'], $list[0]['edited']));
+$items = like_bravo_feedback_items($list);
+$karl_text = sprintf(htmlspecialchars(l10n('%1$s commented on a photo by %2$s that you commented on too:')), '<strong>lb_test_karl</strong>', '<strong>lb_test_alice</strong>');
+ok('text: author and owner in bold, the excerpt in italics', $karl_text.' <em>lb_test_ karl_b</em>', $items[0]['html']);
+ok('text: a guest', sprintf(htmlspecialchars(l10n('A guest commented on a photo by %2$s that you commented on too:')), '', '<strong>lb_test_alice</strong>').' <em>lb_test_ guest_b</em>', $items[1]['html']);
+ok('text: the owner himself, his name once', sprintf(htmlspecialchars(l10n('%1$s commented on their own photo that you commented on too:')), '<strong>lb_test_owner</strong>', '').' <em>lb_test_ owner_c</em>', $items[2]['html']);
+ok('item: to the comments, no totals', array('#comments', false, 'discussion'), array(substr($items[0]['url'], -9), isset($items[0]['likes']), $items[0]['kind']));
+ok('counts and filters: "Also commented" yes, comments on his photos none', array(4, 4, 4, 0, 0),
+  array(like_bravo_feedback_unread_count($bo), like_bravo_feedback_counts($bo, 'discussions')['all'], count(like_bravo_feedback_list($bo, 1, 50, false, 'discussions')['entries']),
+    like_bravo_feedback_counts($bo, 'comments')['all'], like_bravo_feedback_counts($bo, 'votes')['all']));
+ok('tally and top photos leave "Also commented" out', array(array(), array()), array(like_bravo_feedback_tally($bo)['photos'], like_bravo_feedback_top_photos(like_bravo_feedback_tally($bo))));
+
+ok('mark read: an entry "Also commented"; not a comment before his first one', array(true, false, 3),
+  array(like_bravo_feedback_mark_read($bo, 'comment', $dc['guest_b']), like_bravo_feedback_mark_read($bo, 'comment', $dc['karl_before']), like_bravo_feedback_unread_count($bo)));
+pwg_query('UPDATE '.LIKE_BRAVO_FEEDBACK_READ_TABLE." SET read_at = '2026-11-22 00:00:00'"); // read the day after
+like_bravo_feedback_mark_read($bo, 'comment', $dc['karl_b']);
+pwg_query('UPDATE '.LIKE_BRAVO_FEEDBACK_READ_TABLE." SET read_at = '2026-11-22 00:00:00'");
+visitor($ca, '203.0.113.24'); edit_comment($dc['karl_b'], $b, 'lb_test_ karl_b edited', ''); visitor($bo, '203.0.113.22');
+$edited = like_bravo_feedback_list($bo)['entries'][0];
+ok('Karl edits his comment: new text, but the time it was written, still read, not edited', array($dc['karl_b'], 'lb_test_ karl_b edited', '2026-11-21 13:00:00', false, false, true),
+  array($edited['comment_id'], $edited['excerpt'], $edited['time'], $edited['unread'], $edited['edited'], comment_edited($dc['karl_b'])));
+pwg_query('UPDATE '.COMMENTS_TABLE." SET validated = 'true', validation_date = '2026-11-21 15:00:00' WHERE id = ".$dc['karl_waiting']);
+ok('a moderated comment comes once it is validated, at the time of validation', array("discussion|member|lb_test_karl|$b|unread", '2026-11-21 15:00:00'),
+  array(fb_sig($bo)[0], like_bravo_feedback_list($bo)['entries'][0]['time']));
+
+// the test photos are also in their own albums of the gallery: those are forbidden by hand
+$user = build_user($bo, true);
+$user['forbidden_categories'] = implode(',', array_merge(array_filter(explode(',', $user['forbidden_categories'])),
+  query2array('SELECT category_id FROM '.IMAGE_CATEGORY_TABLE.' WHERE image_id = '.$c, null, 'category_id')));
+ok('all albums of C forbidden: C is gone, B stays (in other albums)', array(false, true),
+  array(in_array("discussion|member|lb_test_owner|$c|unread", fb_sig($bo), true), in_array("discussion|guest||$b", fb_sig($bo), true)));
+pwg_query('UPDATE '.CATEGORIES_TABLE." SET status = 'private' WHERE id = $t4"); invalidate_user_cache();
+$user = build_user($webmaster['id'], true);
+ok('what another member may see comes from his user cache: T4 private is forbidden to Bob', true, in_array($t4, like_bravo_feedback_viewer($bo)['forbidden']));
+pwg_query('UPDATE '.CATEGORIES_TABLE." SET status = 'public' WHERE id = $t4"); invalidate_user_cache(); visitor($bo, '203.0.113.22');
+pwg_query('UPDATE '.IMAGES_TABLE." SET level = 4 WHERE id = $b");
+ok('photo B private (privacy level 4): its entries are gone', array("discussion|member|lb_test_owner|$c|unread"), fb_sig($bo));
+pwg_query('UPDATE '.IMAGES_TABLE.' SET level = '.(int)$snap['level'][$b].' WHERE id = '.$b);
+
+pwg_query('UPDATE '.IMAGES_TABLE." SET added_by = 999999 WHERE id = $b");
+$gone = like_bravo_feedback_items(like_bravo_feedback_list($bo)['entries']);
+ok('owner of B gone: sentence without owner', sprintf(htmlspecialchars(l10n('%1$s commented on a photo that you commented on too:')), '<strong>lb_test_karl</strong>', '').' <em>lb_test_ karl_waiting</em>', $gone[0]['html']);
+pwg_query('UPDATE '.IMAGES_TABLE." SET added_by = $al WHERE id = $b");
+
+$alice_b = array_filter(like_bravo_feedback_list($al, 1, 100)['entries'], function($e) use ($b) { return $e['image_id'] == $b and isset($e['comment_id']); });
+ok('Alice, owner of B and commenting there: only comments on her photo, none twice', array(array('comment'), count($alice_b)),
+  array(array_values(array_unique(array_column($alice_b, 'kind'))), count(array_unique(array_column($alice_b, 'comment_id')))));
+
+$alice_unread = like_bravo_feedback_unread_count($al);
+conf_update_param('like_bravo_discussion_since', '2026-11-21 12:30:00', true);
+ok('start of "Also commented": what came before is read; the other feedback stays as it was', array(array("discussion|member|lb_test_karl|$b|unread", "discussion|member|lb_test_karl|$b"), $alice_unread),
+  array(array_slice(fb_sig($bo), 0, 2), like_bravo_feedback_unread_count($al)));
+ok('... and only the newer ones are unread', 1, like_bravo_feedback_unread_count($bo));
+conf_update_param('like_bravo_discussion_since', '2026-01-01 00:00:00', true);
+like_bravo_feedback_mark_all_read($bo);
+ok('mark all as read: also "Also commented"', 0, like_bravo_feedback_unread_count($bo));
+pwg_query('DELETE FROM '.LIKE_BRAVO_FEEDBACK_USER_TABLE.' WHERE user_id = '.$bo);
+
+visitor($bo, '203.0.113.22'); @delete_user_comment(array($dc['bob_c']));
+ok('Bob deletes one of his comments on C: the entry stays (his comment of section 16 is older)', true, in_array($c, array_column(like_bravo_feedback_list($bo)['entries'], 'image_id')));
+@delete_user_comment(array($cm['bob_star']));
+ok('Bob deletes his last comment on C: its entries are gone', false, in_array($c, array_column(like_bravo_feedback_list($bo)['entries'], 'image_id')));
+
+// the owner: votes and comments on his photos, "Also commented" on B
+$sig = fb_sig($own, 1, 100);
+ok('owner: all three kinds in one list', array('bravo', 'comment', 'discussion', 'like'),
+  array_values(array_intersect(array('bravo', 'comment', 'discussion', 'like'), array_unique(array_map(function($e) { return explode('|', $e)[0]; }, $sig)))));
+$walk = array(); $cursor = null;
+do {
+  $chunk = like_bravo_feedback_list($own, 1, 3, false, 'all', $cursor);
+  foreach ($chunk['entries'] as $e) $walk[] = $e['kind'].'|'.$e['who'].'|'.$e['name'].'|'.$e['image_id'].($e['unread'] ? '|unread' : '');
+  $last = end($chunk['entries']);
+  $cursor = $last ? like_bravo_feedback_cursor(like_bravo_feedback_cursor_text($last['time'], $last['read_key'])) : null;
+} while ($chunk['has_more'] and count($walk) < 200);
+ok('cursor over all three kinds, three at a time: the whole list, nothing twice', $sig, $walk);
+ok('owner filters: comments only on his photos, "Also commented" apart', array(array('comment'), array('discussion')),
+  array(array_values(array_unique(array_column(like_bravo_feedback_list($own, 1, 100, false, 'comments')['entries'], 'kind'))),
+    array_values(array_unique(array_column(like_bravo_feedback_list($own, 1, 100, false, 'discussions')['entries'], 'kind')))));
+$tally = like_bravo_feedback_tally($own);
+ok('owner tally: comments on his photos only', count(like_bravo_feedback_list($own, 1, 100, false, 'comments')['entries']), array_sum(array_column($tally['photos'], 'comments')));
+ok('owner counts: all = votes + comments + "Also commented"', like_bravo_feedback_counts($own)['all'],
+  like_bravo_feedback_counts($own, 'votes')['all'] + like_bravo_feedback_counts($own, 'comments')['all'] + like_bravo_feedback_counts($own, 'discussions')['all']);
+$_SESSION = array();
+
 $conf['rate_anonymous'] = $rate_anonymous_before;
 mode($t1, null);
 
@@ -796,12 +913,14 @@ function restore_snapshot() {
   foreach (query2array("SELECT id FROM ".USERS_TABLE." WHERE username LIKE 'lb_test_%'", null, 'id') as $id) delete_user($id);
   pwg_query('DELETE FROM '.COMMENTS_TABLE." WHERE content LIKE 'lb_test_%'");
   if (!empty($snap['added_by'])) foreach ($snap['added_by'] as $id => $by) pwg_query('UPDATE '.IMAGES_TABLE.' SET added_by = '.(int)$by.' WHERE id = '.(int)$id);
+  if (!empty($snap['level'])) foreach ($snap['level'] as $id => $level) pwg_query('UPDATE '.IMAGES_TABLE.' SET level = '.(int)$level.' WHERE id = '.(int)$id);
   // core data first, then the plugin's tables; each step on its own, so that one failure
   // does not keep the others from running; insert_row(): mass_inserts() turns '' into NULL
   $steps = array(
     'rates' => function() use ($snap) { pwg_query('DELETE FROM '.RATE_TABLE); foreach ($snap['rates'] as $row) insert_row(RATE_TABLE, $row); },
     'modes' => function() use ($snap) { pwg_query('DELETE FROM '.LIKE_BRAVO_MODES_TABLE); foreach ($snap['modes'] as $row) insert_row(LIKE_BRAVO_MODES_TABLE, $row); },
-    'settings' => function() use ($snap) { conf_update_param('like_bravo', $snap['conf'], true); conf_update_param('like_bravo_feedback_since', $snap['since'], true); },
+    'settings' => function() use ($snap) { conf_update_param('like_bravo', $snap['conf'], true); conf_update_param('like_bravo_feedback_since', $snap['since'], true);
+      if (null === $snap['discussion_since']) conf_delete_param('like_bravo_discussion_since'); else conf_update_param('like_bravo_discussion_since', $snap['discussion_since'], true); },
     'feedback' => function() use ($snap) { foreach ($snap['feedback'] as $table => $rows) { pwg_query('DELETE FROM '.$table); foreach ($rows as $row) insert_row($table, $row); } },
     );
   foreach ($steps as $name => $step) {

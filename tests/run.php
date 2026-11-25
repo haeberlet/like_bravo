@@ -554,6 +554,12 @@ check('read before: without it, the later of registration and start of feedback'
 check('read before: a member registered after the start', '2026-12-01 09:00:00',
   like_bravo_feedback_read_before(null, '2026-12-01 09:00:00', '2026-11-23 22:00:00'));
 check('read before: nothing known', '', like_bravo_feedback_read_before(null, null, null));
+check('read before "Also commented": not before their start', '2026-11-26 10:00:00',
+  like_bravo_discussion_read_before('2026-11-25 08:00:00', '2026-11-26 10:00:00'));
+check('read before "Also commented": a later "mark all as read" wins', '2026-11-27 08:00:00',
+  like_bravo_discussion_read_before('2026-11-27 08:00:00', '2026-11-26 10:00:00'));
+check('read before "Also commented": start unknown', '2026-11-25 08:00:00', like_bravo_discussion_read_before('2026-11-25 08:00:00', null));
+check('read before "Also commented": nothing known', '', like_bravo_discussion_read_before('', null));
 
 check('read: older than "mark all as read"', true, like_bravo_feedback_is_read('2026-11-24 10:00:00', '2026-11-25 08:00:00', null));
 check('read: in the same second as "mark all as read"', true, like_bravo_feedback_is_read('2026-11-25 08:00:00', '2026-11-25 08:00:00', null));
@@ -583,6 +589,16 @@ check('who: a guest', array('who' => 'guest', 'name' => null), like_bravo_feedba
 check('who: a member whose account is gone', array('who' => 'former', 'name' => null), like_bravo_feedback_who(false, null, true));
 check('who: names hidden by "Names of voters"', array('who' => 'hidden', 'name' => null), like_bravo_feedback_who(false, 'Alice', false));
 check('who: names hidden, also for guests', array('who' => 'hidden', 'name' => null), like_bravo_feedback_who(true, null, false));
+
+check('"Also commented": a member on a photo of another member', 'member', like_bravo_discussion_case('member', 5, 7, 'Eve'));
+check('"Also commented": the owner himself', 'self', like_bravo_discussion_case('member', 7, 7, 'Eve'));
+check('"Also commented": a guest', 'guest', like_bravo_discussion_case('guest', 2, 7, 'Eve'));
+check('"Also commented": a guest, owner gone', 'guest_gone', like_bravo_discussion_case('guest', 2, 7, null));
+check('"Also commented": a member, owner gone', 'member_gone', like_bravo_discussion_case('member', 5, 7, null));
+check('"Also commented": the owner wrote it, then his account was deleted', 'member_gone', like_bravo_discussion_case('member', 7, 7, null));
+check('"Also commented": a former member', 'former', like_bravo_discussion_case('former', 9, 7, 'Eve'));
+check('"Also commented": same id but no member (guest account owns the photo)', 'guest', like_bravo_discussion_case('guest', 2, 2, 'guest'));
+check('"Also commented": names are never hidden for comments', 'former', like_bravo_discussion_case('hidden', 5, 7, 'Eve'));
 
 $now = '2026-11-24 09:30:00';
 check('when: under a minute', array('unit' => 'now', 'value' => 0), like_bravo_feedback_when('2026-11-24 09:29:10', $now));

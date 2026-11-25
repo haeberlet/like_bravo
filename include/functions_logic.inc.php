@@ -970,6 +970,51 @@ function like_bravo_feedback_read_before($read_all_before, $registration_date, $
 }
 
 /**
+ * Time up to which the entries "Also commented" of a member count as read:
+ * as all his feedback, but not before the plugin started them (its update
+ * to 0.3.0), so that comments of the time before do not all come up as
+ * unread at once.
+ *
+ * @param string $read_before as like_bravo_feedback_read_before()
+ * @param string|null $discussion_since when the plugin started them
+ * @return string 'Y-m-d H:i:s', '' if nothing is known
+ */
+function like_bravo_discussion_read_before($read_before, $discussion_since)
+{
+  return (string)max((string)$read_before, (string)$discussion_since);
+}
+
+/**
+ * Which sentence an entry "Also commented" gets: by its author, and by
+ * whether the owner of the photo still has an account and wrote the comment
+ * himself. The owner is compared by account, not by name.
+ *
+ * @param string $who of the author, see like_bravo_feedback_who()
+ * @param int $author_id
+ * @param int $owner_id who added the photo
+ * @param string|null $owner_name null if his account is gone
+ * @return string 'self', 'member', 'guest', 'former', 'member_gone',
+ *    'guest_gone' or 'former_gone'
+ */
+function like_bravo_discussion_case($who, $author_id, $owner_id, $owner_name)
+{
+  if (!in_array($who, array('member', 'guest', 'former'), true))
+  {
+    $who = 'former';
+  }
+  if (null === $owner_name or '' === (string)$owner_name)
+  {
+    return $who.'_gone';
+  }
+  if ('member' === $who and (int)$author_id > 0 and (int)$author_id === (int)$owner_id)
+  {
+    return 'self';
+  }
+
+  return $who;
+}
+
+/**
  * Whether an entry of the feedback is read: it is not newer than "mark all
  * as read", or it was read on its own after it last changed. A changed vote
  * or an edited comment gets a new time and is unread again.
